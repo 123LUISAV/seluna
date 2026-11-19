@@ -8,11 +8,11 @@ Beta Android de Tecnologías Móviles, desarrollada por **Luisa Fernanda Velandi
 
 ## Capturas de la beta
 
-Capturas del emulador Android con un perfil y registros ficticios. El chat muestra el modo de demostración.
+Capturas del emulador Android con perfiles y registros ficticios. El chat muestra una respuesta de la guía sin conexión.
 
 | Hoy | Calendario | Registro | Estadísticas | Asistente |
 | --- | --- | --- | --- | --- |
-| <img src="docs/capturas/hoy.png" alt="Día del ciclo y fecha estimada" width="180"> | <img src="docs/capturas/calendario.png" alt="Calendario con un inicio de menstruación registrado" width="180"> | <img src="docs/capturas/registro.png" alt="Diario con un registro de flujo, ánimo y síntomas" width="180"> | <img src="docs/capturas/estadisticas.png" alt="Duración estimada y recuentos derivados del diario" width="180"> | <img src="docs/capturas/chat.png" alt="Conversación educativa en modo demostración" width="180"> |
+| <img src="docs/capturas/hoy.png" alt="Día del ciclo y fecha estimada" width="180"> | <img src="docs/capturas/calendario.png" alt="Calendario con un inicio de menstruación registrado" width="180"> | <img src="docs/capturas/registro.png" alt="Diario con un registro de flujo, ánimo y síntomas" width="180"> | <img src="docs/capturas/estadisticas.png" alt="Duración estimada y recuentos derivados del diario" width="180"> | <img src="docs/capturas/chat.png" alt="Preguntas rápidas y respuesta de la guía de Seluna" width="180"> |
 
 ## Ejecutar en Android Studio
 
@@ -23,6 +23,8 @@ Abre esta carpeta como proyecto, usa JDK 17 y Android SDK 35, selecciona la vari
 ```
 
 El APK queda en `app/build/outputs/apk/debug/app-debug.apk`. El seguimiento y las cuentas locales funcionan en el dispositivo. Para la demostración del asistente, usa el emulador Android estándar. El APK de depuración apunta a `10.0.2.2:8787`, la dirección con la que el emulador llega al equipo anfitrión.
+
+En la APK de depuración, **Entrar con datos de muestra** crea el perfil local `demo@seluna.example` con contraseña `SelunaDemo26!`, tres inicios del ciclo y seis registros ficticios. También puedes iniciar sesión con esas credenciales. El seeder carga los ejemplos la primera vez y conserva las ediciones posteriores.
 
 ## Registro de Firebase
 
@@ -39,7 +41,7 @@ Habilita **Authentication → Correo electrónico/contraseña** y crea **Cloud F
 
 ## Probar el asistente
 
-Con Node.js 22 o superior, inicia el servidor de demostración desde la raíz del proyecto. Devuelve una respuesta identificada como demostración local.
+Las preguntas reconocidas por la guía se contestan en Android sin conexión. Para probar una consulta fuera de la guía con una respuesta de demostración, inicia el servidor desde la raíz del proyecto con Node.js 22 o superior.
 
 ```powershell
 node server/server.mjs --demo
@@ -52,14 +54,14 @@ node server/server.mjs --check-model
 node server/server.mjs
 ```
 
-El servidor lee la clave exclusivamente de `server/.env`, excluido de Git, y usa `https://api.b.ai/v1` con el identificador `qwen3.8-flash`. Al pulsar **Enviar**, viajan el mensaje y hasta ocho mensajes recientes de ese chat. El perfil y el diario se conservan en SQLite. El servidor de referencia escucha solo en el equipo anfitrión. El chat en un teléfono físico requiere desplegar un servicio HTTPS con control de acceso, que queda fuera de esta beta. [B.AI · Qwen3.8 Flash](https://docs.b.ai/llmservice/models/qwen3-8-flash/)
+El servidor lee la clave exclusivamente de `server/.env`, excluido de Git, y usa `https://api.b.ai/v1` con el identificador `qwen3.8-flash`. Las consultas fuera de la guía se envían al modelo con un máximo de 240 tokens de salida. Se usa como referencia hasta una ficha breve de la guía y, en preguntas de seguimiento, hasta dos mensajes anteriores recortados. El perfil y el diario se conservan en SQLite. El servidor de referencia escucha solo en el equipo anfitrión. El chat con Qwen en un teléfono físico requiere desplegar un servicio HTTPS con control de acceso, que queda fuera de esta beta. [B.AI · Qwen3.8 Flash](https://docs.b.ai/llmservice/models/qwen3-8-flash/)
 
 ## Recorrido para exponer
 
 1. En la app, crea una cuenta local ficticia y selecciona un inicio de menstruación reciente.
 2. Muestra el anillo de Hoy y la fecha estimada. Abre el calendario y selecciona un día.
 3. Guarda un registro con flujo, ánimo, síntomas e intensidad. Revisa los recuentos y la exportación PDF en Estadísticas.
-4. Abre el chat y pregunta «¿Cómo se cuenta el día 1 del ciclo?». Identifica el modo que estás usando.
+4. Abre el chat y selecciona «¿Cómo se cuenta el día 1 del ciclo?» para probar la guía local. Para mostrar el servidor, escribe una pregunta diferente, como «¿Cómo puedo preparar preguntas para mi próxima consulta sobre mi ciclo?».
 
 ## Publicar desde una cuenta aislada
 

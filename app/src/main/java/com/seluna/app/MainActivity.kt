@@ -5,9 +5,14 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.InputType
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -24,6 +29,7 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
     private lateinit var store: SelunaStore
+    private lateinit var guide: SelunaGuide
     private lateinit var root: LinearLayout
     private lateinit var body: LinearLayout
     private var page = 0
@@ -127,6 +133,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = SelunaStore(this)
+        guide = SelunaGuide(this)
         if (store.currentUser() == null) auth(false) else showPage(0)
     }
 
@@ -219,7 +226,15 @@ class MainActivity : Activity() {
                         email.error = "Escribe un correo válido"
                     p.length < 6 -> pass.error = "Usa al menos 6 caracteres"
                     else -> {
-                        val ok = if (register) store.register(n, e, p) else store.login(e, p)
+                        val ok =
+                            if (register) store.register(n, e, p)
+                            else {
+                                store.login(e, p) ||
+                                    (BuildConfig.DEBUG &&
+                                        e.equals(DemoSeeder.EMAIL, ignoreCase = true) &&
+                                        p == DemoSeeder.PASSWORD &&
+                                        DemoSeeder.signIn(store))
+                            }
                         if (ok) {
                             if (register) profile(true) else showPage(0)
                         } else
@@ -239,6 +254,16 @@ class MainActivity : Activity() {
             },
             12,
         )
+        if (BuildConfig.DEBUG && store.currentUser() == null) {
+            add(
+                body,
+                button("Entrar con datos de muestra", true) {
+                    if (DemoSeeder.signIn(store)) showPage(0)
+                    else toast("No se pudo abrir la cuenta de muestra")
+                },
+                12,
+            )
+        }
     }
 
     private fun showPage(i: Int) {
@@ -301,6 +326,7 @@ class MainActivity : Activity() {
             8,
         )
         add(body, note, 18)
+        editorial("Consejo de Seluna", guide.articles.filter(GuideArticle::wellness).take(1))
         add(
             body,
             button("Cerrar sesión", true) {
@@ -401,9 +427,7 @@ class MainActivity : Activity() {
         title("Tu calendario", "Explora tus días y registra tu ciclo.")
         val controls = row()
         controls.addView(
-            button("‹", true) {
-                changeMonth(-1)
-            },
+            button("‹", true) { changeMonth(-1) },
             LinearLayout.LayoutParams(dp(52), -2),
         )
         controls.addView(
@@ -419,9 +443,7 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f),
         )
         controls.addView(
-            button("›", true) {
-                changeMonth(1)
-            },
+            button("›", true) { changeMonth(1) },
             LinearLayout.LayoutParams(dp(52), -2),
         )
         add(body, controls)
@@ -708,7 +730,10 @@ class MainActivity : Activity() {
         val totals = card(mint)
         val recordsLabel = if (entries.size == 1) "registro" else "registros"
         val startsLabel = if (starts.size == 1) "inicio" else "inicios"
-        add(totals, text("${entries.size} $recordsLabel  ·  ${starts.size} $startsLabel", 19, ink, true))
+        add(
+            totals,
+            text("${entries.size} $recordsLabel  ·  ${starts.size} $startsLabel", 19, ink, true),
+        )
         val avg =
             if (entries.isEmpty()) "Aún no hay intensidad registrada"
             else
@@ -777,6 +802,7 @@ class MainActivity : Activity() {
                 },
                 10,
             )
+        editorial("Guías de bienestar", guide.articles.filter(GuideArticle::wellness))
         add(
             body,
             button("Exportar resumen en PDF") {
@@ -826,18 +852,34 @@ class MainActivity : Activity() {
         filters = arrayOf(InputFilter.LengthFilter(length))
     }
 
-    private fun chat() {
+    private fun chat(waiting: Boolean = false) {
         base()
         title("Conversemos ✧", "Un espacio para tus preguntas de bienestar.")
         add(
             body,
             text(
-                "Al enviar, compartes tu mensaje y hasta ocho mensajes recientes de este chat con B.AI. Tu diario queda en el dispositivo. La respuesta es orientativa. Para una consulta médica, acude a un profesional de salud.",
+                "La guía responde en el dispositivo. Para otras preguntas, el chat puede compartir tu mensaje y hasta dos anteriores con B.AI. Tu diario queda en el dispositivo. La orientación es general.",
                 14,
                 plum,
             ),
         )
         gap(body, 12)
+        add(body, text("Preguntas para empezar", 16, ink, true))
+        val quickQuestions =
+            RecyclerView(this).apply {
+                layoutManager =
+                    LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+                isNestedScrollingEnabled = false
+                adapter =
+                    SimpleAdapter(guide.articles, horizontal = true) { article ->
+                        button(article.question, true) { answerLocally(article.question, article) }
+                            .apply {
+                                maxWidth = dp(215)
+                                isEnabled = !waiting
+                            }
+                    }
+            }
+        add(body, quickQuestions, 8)
         if (messages.isEmpty()) {
             val welcome = card(lavender)
             add(welcome, text("Hola, soy Seluna. ¿En qué puedo acompañarte hoy?", 15))
@@ -846,18 +888,45 @@ class MainActivity : Activity() {
             add(
                 body,
                 list(messages) { m ->
-                    card(if (m.first == "user") pink else lavender).apply {
-                        add(this, text(if (m.first == "user") "Tú" else "Seluna", 13, plum, true))
-                        add(this, text(m.second, 15), 6)
-                        setOnClickListener {
-                            AlertDialog.Builder(this@MainActivity)
-                                .setMessage(m.second)
-                                .setPositiveButton("Cerrar", null)
-                                .show()
+                    val mine = m.first == "user"
+                    val bubble =
+                        card(if (mine) pink else lavender).apply {
+                            add(this, text(if (mine) "TÚ" else "✦  SELUNA", 12, plum, true))
+                            val message =
+                                text("", 15).apply {
+                                    text = if (mine) m.second else formatChat(m.second)
+                                    setLineSpacing(dp(3).toFloat(), 1f)
+                                    setTextIsSelectable(true)
+                                }
+                            add(this, message, 8)
+                            setOnClickListener {
+                                AlertDialog.Builder(this@MainActivity)
+                                    .setMessage(if (mine) m.second else formatChat(m.second))
+                                    .setPositiveButton("Cerrar", null)
+                                    .show()
+                            }
                         }
+                    row().apply {
+                        gravity = if (mine) Gravity.END else Gravity.START
+                        addView(
+                            bubble,
+                            LinearLayout.LayoutParams(
+                                (resources.displayMetrics.widthPixels * .78f).toInt(),
+                                -2,
+                            ),
+                        )
                     }
                 },
             )
+        val scroll = body.parent as ScrollView
+        if (messages.isNotEmpty()) scroll.post { scroll.smoothScrollTo(0, body.height) }
+        if (waiting) {
+            val status = text("Seluna está escribiendo…", 15, plum)
+            status.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+            add(body, status, 8)
+            return
+        }
+
         val field =
             input(
                     "Escribe tu mensaje",
@@ -865,24 +934,143 @@ class MainActivity : Activity() {
                     type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE,
                 )
                 .withLimit(1_500)
-        add(body, field, 16)
+                .apply { maxLines = 3 }
         val send =
             button("Enviar") {
                 val content = field.text.toString().trim()
                 if (content.isNotEmpty()) {
                     chatDraft = ""
-                    messages.add("user" to content)
-                    chatLoading()
+                    val article = guide.match(content)
+                    if (article != null) answerLocally(content, article)
+                    else {
+                        messages.add("user" to content)
+                        chatLoading()
+                    }
                 } else field.error = "Escribe un mensaje"
             }
-        add(body, send, 10)
-        add(body, button("Volver", true) { showPage(page) }, 10)
+        val composer =
+            column().apply {
+                setPadding(dp(16), dp(8), dp(16), dp(6))
+                setBackgroundColor(ivory)
+            }
+        val actions = row()
+        actions.addView(field, LinearLayout.LayoutParams(0, -2, 1f))
+        actions.addView(send, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
+        add(composer, actions)
+        add(
+            composer,
+            text("Volver", 14, plum, true).apply {
+                minHeight = dp(44)
+                gravity = Gravity.CENTER
+                isFocusable = true
+                setOnClickListener { showPage(page) }
+            },
+        )
+        root.addView(composer)
+    }
+
+    private fun answerLocally(question: String, article: GuideArticle) {
+        chatDraft = ""
+        messages.add("user" to question)
+        val source = article.sourceLabel?.let { "\n\nFuente: $it" } ?: ""
+        messages.add("assistant" to (article.answer + source))
+        chat()
+    }
+
+    private fun editorial(heading: String, articles: List<GuideArticle>) {
+        if (articles.isEmpty()) return
+        add(body, text(heading, 20, ink, true), 22)
+        add(
+            body,
+            list(articles) { article ->
+                card(if (articles.indexOf(article) % 2 == 0) mint else lavender).apply {
+                    add(this, text("✦  GUÍA DE BIENESTAR", 11, plum, true))
+                    add(this, text(article.title, 18, ink, true), 8)
+                    add(this, text(article.question, 14, plum), 6)
+                    add(this, text("Leer consejo  →", 13, plum, true), 12)
+                    contentDescription = "${article.title}. Abrir guía"
+                    setOnClickListener { showArticle(article) }
+                }
+            },
+            10,
+        )
+    }
+
+    private fun showArticle(article: GuideArticle) {
+        val dialog =
+            AlertDialog.Builder(this)
+                .setTitle(article.title)
+                .setMessage(formatChat(article.answer))
+                .setNegativeButton("Cerrar", null)
+        val url = article.sourceUrl
+        if (url != null && url.startsWith("https://")) {
+            dialog.setPositiveButton(article.sourceLabel ?: "Ver fuente") { _, _ ->
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (_: Exception) {
+                    toast("No se pudo abrir la fuente")
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun formatChat(source: String): CharSequence {
+        val result = SpannableStringBuilder()
+        source.take(8000).lines().forEachIndexed { index, original ->
+            if (index > 0) result.append("\n")
+            val trimmed = original.trimStart()
+            val headingPrefix = trimmed.takeWhile { it == '#' }
+            val heading =
+                headingPrefix.length in 1..6 && trimmed.getOrNull(headingPrefix.length) == ' '
+            var line = if (heading) trimmed.drop(headingPrefix.length).trimStart() else original
+            if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) line = "• " + trimmed.drop(2)
+            val start = result.length
+            var pos = 0
+            while (pos < line.length) {
+                val open = line.indexOf("**", pos)
+                if (open < 0) {
+                    result.append(line.substring(pos))
+                    break
+                }
+                val close = line.indexOf("**", open + 2)
+                if (close < 0) {
+                    result.append(line.substring(pos))
+                    break
+                }
+                result.append(line.substring(pos, open))
+                val boldStart = result.length
+                result.append(line.substring(open + 2, close))
+                if (result.length > boldStart) {
+                    result.setSpan(
+                        StyleSpan(Typeface.BOLD),
+                        boldStart,
+                        result.length,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    )
+                }
+                pos = close + 2
+            }
+            if (heading && result.length > start) {
+                result.setSpan(
+                    StyleSpan(Typeface.BOLD),
+                    start,
+                    result.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+                result.setSpan(
+                    RelativeSizeSpan(1.15f),
+                    start,
+                    result.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
+        }
+        return result
     }
 
     private fun chatLoading() {
-        base()
-        title("Conversemos ✧", "Seluna está escribiendo…")
-        add(body, text("Espera un momento mientras preparamos una respuesta.", 15, plum))
+        chat(waiting = true)
         val snapshot = messages.toList()
         thread {
             try {

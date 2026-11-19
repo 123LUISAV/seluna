@@ -21,7 +21,7 @@ object ChatClient {
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             val history = JSONArray()
-            for ((role, content) in messages.takeLast(9)) {
+            for ((role, content) in messages.takeLast(3)) {
                 history.put(JSONObject().put("role", role).put("content", content.take(1_500)))
             }
             val payload = JSONObject().put("messages", history).toString()

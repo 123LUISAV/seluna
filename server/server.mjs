@@ -9,12 +9,28 @@ const apiKey = demo ? undefined : config.BAI_API_KEY?.trim();
 const port = Number(config.PORT || 8787);
 const baseUrl = 'https://api.b.ai/v1';
 const model = 'qwen3.8-flash';
-const instruction = `Eres Seluna, asistente educativo de salud menstrual. Habla en español claro y breve.
-Brinda información general. No diagnostiques, no prescribas medicamentos o dosis, no evalúes
-certeza de un embarazo u ovulación y no sugieras usar predicciones como anticoncepción.
-Si la persona describe una posible urgencia, sugiere atención urgente local sin afirmar un diagnóstico.
-No pidas información identificable o registros íntimos. No dices tener acceso al diario ni al perfil.
-Si una pregunta necesita evaluación individual, remite a un profesional de salud.`;
+const guideUrl = new URL('../app/src/main/assets/seluna-guide.json', import.meta.url);
+const guide = JSON.parse(readFileSync(guideUrl, 'utf8'));
+const knownQuestions = new Map(guide.flatMap(article =>
+  [article.question, ...article.aliases].map(question => [normalize(question), article])));
+const instruction = `Eres Seluna. Responde en español, máximo 90 palabras, con párrafos breves, **negritas** y viñetas simples si ayudan.
+Brinda educación menstrual general. Evita diagnósticos, dosis y certezas de embarazo, ovulación o anticoncepción. Ante una posible urgencia indica buscar atención urgente local. Para evaluación individual remite a un profesional. No solicites datos identificables o íntimos ni afirmes tener acceso al diario.`;
+
+function normalize(text) {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function modelMessages(messages, question) {
+  const isFollowUp = /^(?:y|entonces|eso|esa|asi|tambien|en ese caso)\b/.test(question) ||
+    /^(?:cuanto dura|es normal|por que|que significa)$/.test(question);
+  const history = isFollowUp
+    ? messages.slice(-3, -1).map(message => ({ ...message, content: message.content.slice(0, 320) }))
+    : [];
+  const query = ` ${question} `;
+  const article = guide.find(item => item.keywords.some(keyword => query.includes(` ${keyword} `)));
+  const context = article ? `\nGuía de referencia: ${article.context}` : '';
+  return [{ role: 'system', content: instruction + context }, ...history, messages.at(-1)];
+}
 
 if (process.argv.includes('--check-model')) {
   if (!apiKey) throw new Error('Configura BAI_API_KEY en server/.env.');
@@ -94,6 +110,9 @@ const server = createServer(async (request, response) => {
     return send(response, 400, { error: 'El cuerpo debe ser JSON válido.' });
   }
   if (!messages) return send(response, 400, { error: 'Historial de mensajes inválido o excede el tamaño permitido.' });
+  const normalizedQuestion = normalize(messages.at(-1).content);
+  const article = knownQuestions.get(normalizedQuestion);
+  if (article) return send(response, 200, { reply: article.answer, source: 'guide' });
   if (demo) {
     return send(response, 200, { reply: 'Demostración local · El día 1 del ciclo corresponde al inicio de la menstruación. Registrar tus fechas te permite observar cómo varía tu ciclo.' });
   }
@@ -107,10 +126,10 @@ const server = createServer(async (request, response) => {
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({
         model,
-        messages: [{ role: 'system', content: instruction }, ...messages],
+        messages: modelMessages(messages, normalizedQuestion),
         stream: true,
         enable_thinking: false,
-        max_tokens: 600,
+        max_tokens: 240,
       }),
       signal: AbortSignal.timeout(33_000),
       redirect: 'error',
@@ -124,7 +143,7 @@ const server = createServer(async (request, response) => {
     if (!reply.trim()) {
       return send(response, 502, { error: 'El proveedor devolvió una respuesta vacía.' });
     }
-    send(response, 200, { reply: reply.trim() });
+    send(response, 200, { reply: reply.trim(), source: 'model' });
   } catch {
     send(response, 502, { error: 'El proveedor no está disponible.' });
   } finally {

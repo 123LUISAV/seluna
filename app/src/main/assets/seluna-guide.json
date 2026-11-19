@@ -1,0 +1,64 @@
+[
+  {
+    "title": "El día 1 de tu ciclo",
+    "question": "¿Cómo se cuenta el día 1 del ciclo?",
+    "aliases": ["como se cuenta el primer dia del ciclo", "que es el dia 1 del ciclo", "que se considera dia 1 del ciclo", "como se cuenta el ciclo menstrual", "cuando empieza el ciclo menstrual"],
+    "keywords": ["dia 1", "primer dia", "contar el ciclo"],
+    "context": "El ciclo se cuenta desde el primer día de una menstruación hasta el primer día de la siguiente.",
+    "answer": "El **día 1** es el primer día de tu menstruación. La duración del ciclo se cuenta entre ese inicio y el inicio de la siguiente menstruación.\n\nEn Seluna puedes marcarlo desde **Calendario → Registrar inicio real**.",
+    "sourceLabel": "Office on Women’s Health · Ciclo menstrual",
+    "sourceUrl": "https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle"
+  },
+  {
+    "title": "Tu próxima fecha estimada",
+    "question": "¿Cómo estima Seluna mi próximo periodo?",
+    "aliases": ["como predice seluna mi periodo", "como calcula seluna la siguiente menstruacion", "como calcula seluna mi proxima fecha", "como funciona la estimacion del ciclo"],
+    "keywords": ["estima", "prediccion", "proxima fecha"],
+    "context": "Seluna suma al último inicio el promedio de intervalos registrados de 15 a 90 días o, si no hay intervalos válidos, la duración habitual del perfil.",
+    "answer": "Seluna suma al **último inicio registrado** el promedio de los intervalos válidos entre tus inicios. Si aún no hay intervalos válidos, usa la duración que indicaste en el perfil.\n\nLa fecha es aproximada y puede cambiar con los siguientes registros.",
+    "sourceLabel": "Office on Women’s Health · Variación del ciclo",
+    "sourceUrl": "https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle"
+  },
+  {
+    "title": "Calor y movimiento suave",
+    "wellness": true,
+    "question": "¿Qué puede ayudar con cólicos leves?",
+    "aliases": ["que puedo hacer con colicos leves", "que ayuda con los colicos leves", "que hacer para aliviar colicos leves", "que puedo hacer si tengo colicos leves"],
+    "keywords": ["colicos", "calor", "dolor menstrual"],
+    "context": "El NHS menciona calor local protegido y movimiento suave como medidas generales. Si el dolor es intenso, empeora o limita la vida diaria, corresponde consultar.",
+    "answer": "Para molestias leves puedes probar **calor local** con una bolsa tibia envuelta en una toalla, o movimiento suave como caminar si te resulta cómodo.\n\nSi el dolor limita tus actividades, empeora o es mucho más fuerte de lo habitual, busca valoración profesional.",
+    "sourceLabel": "NHS · Dolor menstrual",
+    "sourceUrl": "https://www.nhs.uk/symptoms/period-pain/"
+  },
+  {
+    "title": "Infusiones y bienestar",
+    "wellness": true,
+    "question": "¿Qué debo saber sobre las infusiones?",
+    "aliases": ["las infusiones quitan los colicos", "las infusiones ayudan con el periodo", "que debo saber de las infusiones"],
+    "keywords": ["infusion", "infusiones", "jengibre", "hierbas"],
+    "context": "La evidencia de suplementos de jengibre no se traslada directamente a infusiones. Los productos herbales pueden interactuar con medicamentos.",
+    "answer": "Una bebida tibia puede ser parte de tu rutina de bienestar. Los estudios sobre suplementos de jengibre no permiten sacar las mismas conclusiones sobre una infusión.\n\nSi tomas medicamentos, consulta con un profesional antes de usar productos herbales con fines de salud.",
+    "sourceLabel": "NCCIH · Jengibre y seguridad",
+    "sourceUrl": "https://www.nccih.nih.gov/health/ginger"
+  },
+  {
+    "title": "Qué registrar en tu diario",
+    "question": "¿Cómo registro mis síntomas en Seluna?",
+    "aliases": ["como registro sintomas", "como registro mis sintomas", "como uso el diario de seluna", "como agrego un registro"],
+    "keywords": ["registro", "diario", "sintomas"],
+    "context": "En Registro, Nuevo registro permite elegir una fecha y guardar flujo, ánimo, síntomas, intensidad y una nota opcional.",
+    "answer": "Abre **Registro → Nuevo registro** y elige la fecha. Añade el flujo, el ánimo, los síntomas que quieras recordar y una intensidad entre 1 y 5. La nota es opcional.\n\nEn **Estadísticas** puedes consultar los recuentos a partir de lo que registraste.",
+    "sourceLabel": null,
+    "sourceUrl": null
+  },
+  {
+    "title": "Tu diario y el chat",
+    "question": "¿Qué datos se comparten con el chat?",
+    "aliases": ["el chat lee mi diario", "quien ve mi diario", "que datos envia seluna a bai", "seluna envia mi diario"],
+    "keywords": ["privacidad", "datos personales", "datos del chat"],
+    "context": "El chat no puede acceder al perfil, al diario ni a la base de datos. El servidor solo usa el texto de la conversación.",
+    "answer": "El **diario y el perfil** se guardan en tu dispositivo. Las preguntas de la guía se contestan dentro de la app. Para consultas a Qwen, Seluna puede compartir el mensaje y hasta dos mensajes anteriores del chat con B.AI.",
+    "sourceLabel": null,
+    "sourceUrl": null
+  }
+]
