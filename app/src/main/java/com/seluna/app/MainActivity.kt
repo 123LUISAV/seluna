@@ -12,6 +12,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.InputFilter
 import android.text.InputType
 import android.text.SpannableStringBuilder
@@ -39,6 +41,14 @@ class MainActivity : Activity() {
     private lateinit var store: SelunaStore
     private lateinit var cloud: SelunaCloud
     private var cloudBusy = false
+    private val syncHandler = Handler(Looper.getMainLooper())
+    private val syncJob = Runnable { runAutomaticBackup() }
+    private var foreground = false
+    private var syncRunning = false
+    private var showingCloud = false
+    private var showingMainPage = false
+    private var syncStatus: String? = null
+    private var syncFailures = 0
     private lateinit var guide: SelunaGuide
     private lateinit var root: LinearLayout
     private lateinit var body: LinearLayout
@@ -149,9 +159,19 @@ class MainActivity : Activity() {
         photoUserId = savedInstanceState?.takeIf { it.containsKey("photo_user_id") }
             ?.getLong("photo_user_id")
         cloud.resumeAccount()
-        if (store.currentUser() == null) auth(false)
-        else if (!store.onboardingComplete()) profile(true)
-        else showPage(0)
+        if (store.currentUser() == null) auth(false) else enterAccount()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        foreground = true
+        queueAutomaticBackup()
+    }
+
+    override fun onStop() {
+        foreground = false
+        syncHandler.removeCallbacks(syncJob)
+        super.onStop()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -160,6 +180,8 @@ class MainActivity : Activity() {
     }
 
     private fun base(withNav: Boolean = false) {
+        showingCloud = false
+        showingMainPage = withNav
         root = column().apply { setBackgroundColor(ivory) }
         setContentView(root)
         val header = row().apply { setPadding(dp(24), dp(16), dp(24), dp(12)) }
@@ -197,17 +219,34 @@ class MainActivity : Activity() {
                     setPadding(dp(8), dp(8), dp(8), dp(12))
                     setBackgroundColor(Color.WHITE)
                 }
-            listOf("☼\nHoy", "▦\nCalendario", "◒\nEstadísticas", "✎\nRegistro").forEachIndexed {
-                i,
-                s ->
-                val item =
-                    text(s, 12, if (i == page) plum else Color.rgb(150, 138, 143), i == page)
-                        .apply {
-                            gravity = Gravity.CENTER
-                            setPadding(0, dp(8), 0, dp(5))
-                            contentDescription = s.replace('\n', ' ')
-                            setOnClickListener { showPage(i) }
-                        }
+            listOf(
+                "Hoy" to R.drawable.nav_today,
+                "Calendario" to R.drawable.nav_calendar,
+                "Estadísticas" to R.drawable.nav_stats,
+                "Registro" to R.drawable.nav_diary,
+            ).forEachIndexed { i, (label, icon) ->
+                val selected = i == page
+                val tint = if (selected) ink else plum
+                val item = column().apply {
+                    gravity = Gravity.CENTER
+                    minimumHeight = dp(60)
+                    setPadding(0, dp(4), 0, dp(3))
+                    contentDescription = label
+                    isSelected = selected
+                    isFocusable = true
+                    setOnClickListener { showPage(i) }
+                }
+                item.addView(ImageView(this).apply {
+                    setImageResource(icon)
+                    setColorFilter(tint)
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                    if (selected) background = bg(pink, 17)
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LinearLayout.LayoutParams(dp(52), dp(34)))
+                item.addView(text(label, 13, tint, true).apply {
+                    gravity = Gravity.CENTER
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LinearLayout.LayoutParams(-1, -2))
                 nav.addView(item, LinearLayout.LayoutParams(0, -2, 1f))
             }
             root.addView(nav)
@@ -268,7 +307,15 @@ class MainActivity : Activity() {
             val e = email.text.toString().trim()
             val p = pass.text.toString()
             val n = name.text.toString().trim()
+            val demo = if (BuildConfig.DEBUG) DemoSeeder.scenarios.firstOrNull {
+                it.email.equals(e, ignoreCase = true)
+            } else null
             when {
+                demo != null && register -> email.error = "Usa otro correo para crear tu cuenta"
+                demo != null -> {
+                    if (p == DemoSeeder.PASSWORD && DemoSeeder.signIn(store, demo)) enterAccount()
+                    else pass.error = "Revisa la contraseña del perfil de ejemplo"
+                }
                 register && n.isEmpty() -> name.error = "Escribe tu nombre"
                 !android.util.Patterns.EMAIL_ADDRESS.matcher(e).matches() -> email.error = "Escribe un correo válido"
                 p.length < 6 -> pass.error = "Usa al menos 6 caracteres"
@@ -303,7 +350,7 @@ class MainActivity : Activity() {
         add(body, form, 20)
         val privacy = card(mint)
         add(privacy, text("✦  Tu privacidad importa", 15, ink, true))
-        add(privacy, text("Tu diario se guarda en este dispositivo. Al crear una copia, Firebase cifra los datos durante el envío y en sus servidores.", 14, plum), 6)
+        add(privacy, text("Tu diario se guarda en este dispositivo. Puedes activar una copia automática cifrada en Firebase desde tu cuenta.", 14, plum), 6)
         add(body, privacy, 14)
         add(body, button(if (register) "Ya tengo una cuenta" else "Crear una cuenta", true) { auth(!register) }, 14)
         if (!register) {
@@ -323,7 +370,73 @@ class MainActivity : Activity() {
         currentFocus?.let {
             getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(it.windowToken, 0)
         }
+        syncStatus = null
+        syncFailures = 0
+        if (!cloud.needsInitialRestore()) {
+            showAccount()
+            return
+        }
+        base()
+        title("Recuperando tu diario", "Buscamos una copia de esta cuenta en Firebase.")
+        val recoveryView = root
+        val version = store.sessionVersion
+        add(body, button("Continuar sin esperar", true) { showAccount() })
+        cloud.synchronize(restoreOnly = true, canApply = { root === recoveryView && !isDestroyed }) { result ->
+            if (isFinishing || isDestroyed || store.sessionVersion != version) return@synchronize
+            if (root === recoveryView) {
+                showAccount()
+                if (result.isFailure) toast("No se pudo buscar la copia. Puedes revisarla desde Hoy.")
+            }
+        }
+    }
+
+    private fun showAccount() {
         if (store.onboardingComplete()) showPage(0) else profile(true)
+        queueAutomaticBackup()
+    }
+
+    private fun queueAutomaticBackup(delay: Long = 1_000) {
+        syncHandler.removeCallbacks(syncJob)
+        if (foreground && cloud.automaticBackup) syncHandler.postDelayed(syncJob, delay)
+    }
+
+    private fun localHistoryChanged() {
+        syncStatus = "Hay cambios pendientes"
+        queueAutomaticBackup()
+    }
+
+    private fun runAutomaticBackup() {
+        if (!foreground || !cloud.automaticBackup) return
+        if (cloudBusy || syncRunning) {
+            queueAutomaticBackup()
+            return
+        }
+        val version = store.sessionVersion
+        syncRunning = true
+        cloud.synchronize { result ->
+            syncRunning = false
+            if (isFinishing || isDestroyed) return@synchronize
+            if (store.sessionVersion != version || !cloud.automaticBackup) {
+                queueAutomaticBackup()
+                return@synchronize
+            }
+            val outcome = result.getOrNull()
+            syncStatus = when (outcome) {
+                SelunaCloud.SyncResult.CURRENT, SelunaCloud.SyncResult.UPLOADED -> "Copia al día"
+                SelunaCloud.SyncResult.RESTORED -> "Diario recuperado desde Firebase"
+                SelunaCloud.SyncResult.CONFLICT -> "Hay cambios distintos en este equipo y en Firebase. Revisa la copia antes de reemplazarla."
+                SelunaCloud.SyncResult.LOCAL_CHANGED -> "Hay cambios pendientes"
+                null -> "La copia está pendiente. Tus datos siguen guardados en este equipo."
+            }
+            if (outcome != null) syncFailures = 0
+            if (showingCloud && !cloudBusy) cloudPage()
+            else if (showingMainPage && outcome == SelunaCloud.SyncResult.RESTORED) showPage(page)
+            if (outcome == SelunaCloud.SyncResult.LOCAL_CHANGED) queueAutomaticBackup()
+            if (outcome == null) {
+                syncFailures = (syncFailures + 1).coerceAtMost(4)
+                queueAutomaticBackup(15_000L * syncFailures)
+            }
+        }
     }
 
     private fun setEnabledTree(view: View, enabled: Boolean) {
@@ -463,7 +576,8 @@ class MainActivity : Activity() {
 
     private fun cloudPage() {
         base()
-        title("Copia en Firebase", "Guarda o recupera una copia de tu diario cuando lo decidas.")
+        showingCloud = true
+        title("Copia en Firebase", "Lleva tu diario a otro dispositivo con la misma cuenta.")
         if (cloudBusy) {
             add(body, text("Conectando con Firebase…", 15, plum))
             return
@@ -486,6 +600,35 @@ class MainActivity : Activity() {
             add(body, button("Iniciar sesión en Firebase") { cloudAuth(create = false) }, 16)
             add(body, button("Crear cuenta en Firebase", true) { cloudAuth(create = true) }, 10)
         } else {
+            val automatic = cloud.automaticBackup
+            val automaticCard = card(mint)
+            add(automaticCard, text("Copia automática", 18, ink, true))
+            add(automaticCard, text(
+                if (automatic) syncStatus ?: "Buscando cambios en Firebase…"
+                else "Tu diario se guarda en el equipo. Activa la copia para respaldar tus cambios en Firebase.",
+                15, plum,
+            ), 8)
+            add(automaticCard, button(
+                if (automatic) "Desactivar copia automática" else "Activar copia automática", true,
+            ) {
+                if (automatic) {
+                    cloud.setAutomaticBackup(false)
+                    syncStatus = null
+                    queueAutomaticBackup()
+                    cloudPage()
+                } else AlertDialog.Builder(this)
+                    .setTitle("Activar copia automática")
+                    .setMessage("Se copiarán tus inicios, configuración, síntomas y notas en Firebase cuando uses Seluna con conexión. Puedes desactivarla en este equipo cuando quieras.")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Activar") { _, _ ->
+                        cloud.setAutomaticBackup(true)
+                        syncStatus = null
+                        queueAutomaticBackup()
+                        cloudPage()
+                    }
+                    .show()
+            }, 10)
+            add(body, automaticCard, 12)
             add(
                 body,
                 button("Guardar copia en Firebase") {
@@ -545,7 +688,7 @@ class MainActivity : Activity() {
         add(
             body,
             text(
-                "Tu diario funciona en SQLite y la copia se guarda al confirmar el envío.",
+                "La foto de perfil se guarda en este dispositivo.",
                 14,
                 plum,
             ),
@@ -624,6 +767,7 @@ class MainActivity : Activity() {
             }
         toast(status)
         cloudPage()
+        queueAutomaticBackup()
     }
 
     private fun profile(first: Boolean, draft: CycleSettings? = null) {
@@ -731,6 +875,7 @@ class MainActivity : Activity() {
                         if (first) personalizeProfile(updated)
                         else {
                             store.saveSettings(updated)
+                            localHistoryChanged()
                             showPage(0)
                         }
                     }
@@ -797,6 +942,7 @@ class MainActivity : Activity() {
                 if (updated.goal.isEmpty()) goal.error = "Escribe o elige un objetivo"
                 else {
                     store.completeOnboarding(updated)
+                    localHistoryChanged()
                     showPage(0)
                 }
             },
@@ -956,6 +1102,7 @@ class MainActivity : Activity() {
                     if (starts.contains(selectedDate.toString()))
                         store.deleteCycleStart(selectedDate.toString())
                     else store.addCycleStart(selectedDate.toString())
+                    localHistoryChanged()
                     showPage(1)
                 }
             },
@@ -1024,6 +1171,7 @@ class MainActivity : Activity() {
                                     .setNegativeButton("Cancelar", null)
                                     .setPositiveButton("Eliminar") { _, _ ->
                                         store.deleteEntry(entry.date)
+                                        localHistoryChanged()
                                         showPage(3)
                                     }
                                     .show()
@@ -1110,6 +1258,7 @@ class MainActivity : Activity() {
                                 note.text.toString().trim(),
                             )
                         )
+                        localHistoryChanged()
                         toast("Registro guardado")
                         showPage(3)
                     }

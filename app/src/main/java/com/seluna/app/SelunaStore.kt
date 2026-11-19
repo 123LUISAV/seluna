@@ -41,7 +41,7 @@ data class CycleEstimate(
 
 class SelunaStore(context: Context) :
     SQLiteOpenHelper(context.applicationContext, "seluna.db", null, 3) {
-    internal var sessionVersion: Long = 0
+    @Volatile internal var sessionVersion: Long = 0
         private set
 
     private val session =
@@ -538,5 +538,30 @@ class SelunaStore(context: Context) :
             db.endTransaction()
         }
         return count
+    }
+
+    internal fun replaceFromCloud(
+        userId: Long,
+        config: CycleSettings?,
+        starts: List<String>,
+        records: List<DailyEntry>,
+    ) {
+        check(uid() == userId) { "La sesión local cambió" }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val args = arrayOf(userId.toString())
+            db.delete("entries", "user_id = ?", args)
+            db.delete("cycle_starts", "user_id = ?", args)
+            db.delete("settings", "user_id = ?", args)
+            if (config != null || starts.isNotEmpty() || records.isNotEmpty())
+                completeOnboarding(config)
+            starts.forEach(::addCycleStart)
+            records.forEach(::saveEntry)
+            check(uid() == userId) { "La sesión local cambió" }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
     }
 }
