@@ -54,7 +54,9 @@ classDiagram
 | SQLite · `settings`, `entries`, `cycle_starts` | Configuración, diario e inicios vinculados a `user_id`. El diario y los inicios admiten una fila por perfil y fecha. `CycleStart` representa esas filas, como fechas en Kotlin. |
 | SQLite · `cloud_links` | Par único de perfil local y UID de Firebase. Los datos de una cuenta permanecen separados de los de otras cuentas del dispositivo. |
 | Firebase Authentication | Cuenta por correo, UID y nombre visible cuando se ha guardado. |
-| Cloud Firestore · `users/{uid}/backups/current` | Copia manual de configuración, inicios y diario, con fecha de actualización. El documento padre `users/{uid}` puede estar ausente. La foto queda en el dispositivo. |
+| Cloud Firestore · `users/{uid}/backups/current` | Copia de configuración, inicios y diario, con fecha de actualización. Puede guardarse al confirmar o automáticamente al activar la opción. El documento padre `users/{uid}` puede estar ausente. La foto queda en el dispositivo. |
+
+La app conserva por UID la última revisión confirmada y una huella del historial. Con el respaldo activado, comprueba la revisión antes de subir cambios. Si hubo cambios distintos en ambas versiones, conserva ambas y pide revisión. Un equipo sin datos solicita la copia de la cuenta al iniciar sesión.
 
 Android aísla SQLite dentro del almacenamiento privado de la app. Firebase cifra las copias en tránsito y en reposo. Seluna usa las reglas de Firestore para limitar el acceso del cliente a la copia del UID titular. El cifrado de extremo a extremo y el cifrado propio de SQLite quedan fuera de esta beta. [Protección de Android](https://developer.android.com/privacy-and-security/security-tips) · [Privacidad de Firebase](https://firebase.google.com/support/privacy) · [Documentos padre en Firestore](https://firebase.google.com/docs/firestore/using-console)
 

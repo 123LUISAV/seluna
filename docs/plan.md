@@ -24,9 +24,9 @@ Cuando las fechas, los síntomas y las notas quedan repartidos entre el calendar
 | Registro | Guardar, consultar, editar y eliminar registros por fecha. |
 | Estadísticas | Consultar recuentos, abrir guías de bienestar y exportar un PDF con resumen o detalle diario. |
 | Asistente | Resolver preguntas de la guía sin conexión y enviar otras consultas a Qwen con contexto limitado. |
-| Copia en Firebase | Usar la cuenta iniciada y confirmar la copia del diario a Firestore. Los perfiles locales anteriores pueden vincular una cuenta. Restaurar incorpora los datos que falten en SQLite. |
+| Copia en Firebase | Activar respaldo automático por equipo, guardar primero en SQLite y recuperar la copia con la misma cuenta en un equipo nuevo. La opción manual sigue disponible. |
 
-El acceso y la recuperación por correo usan Firebase Authentication. El diario funciona en SQLite después de iniciar sesión. La copia manual requiere Firebase y una cuenta vinculada. El chat en vivo requiere un servidor con clave y conexión a B.AI. El [diagrama de clases y datos](modelo-datos.md) muestra qué servicio y qué tabla conservan cada dato.
+El acceso y la recuperación por correo usan Firebase Authentication. El diario funciona en SQLite después de iniciar sesión. La copia automática requiere activación, conexión y una cuenta vinculada. El chat en vivo requiere un servidor con clave y conexión a B.AI. El [diagrama de clases y datos](modelo-datos.md) muestra qué servicio y qué tabla conservan cada dato.
 
 ## Metodología
 
@@ -47,7 +47,7 @@ El acceso y la recuperación por correo usan Firebase Authentication. El diario 
 
 ## Cierre de la entrega
 
-1. **Firebase verificado.** Las reglas de `firestore.rules` están activas en `seluna-app`. Desde Android se guardó una copia con seis registros ficticios y tres inicios, y se recuperó un registro eliminado del dispositivo. Se confirmó que Firestore rechaza la lectura anónima.
+1. **Firebase verificado.** Las reglas de `firestore.rules` están activas en `seluna-app`. La prueba manual guardó seis registros ficticios y tres inicios, recuperó un registro eliminado y verificó que se rechaza una lectura anónima. La prueba posterior guardó un registro automáticamente y lo recuperó al entrar en otro emulador con la misma cuenta.
 2. **Diseño.** Comparar la beta actual con Figma en un teléfono pequeño y otro ancho. Priorizar la jerarquía de Hoy, la leyenda del calendario, la legibilidad de los formularios y las tarjetas de bienestar.
 3. **Exposición.** Ensayar con la cuenta de muestra. Mostrar una fecha real y una estimada, el registro, los dos modos del informe PDF, una respuesta de la guía local y la copia ficticia de Firestore.
 
@@ -68,6 +68,8 @@ Los mockups incluyen fases, fertilidad y un porcentaje de confianza. El cálculo
 El largo de un ciclo se cuenta entre el primer día de una menstruación y el primer día de la siguiente. Seluna ordena los inicios registrados, calcula los intervalos aprovechables y suma su promedio redondeado al último inicio. Con un solo inicio, suma la duración habitual que configuró la usuaria. Si una fecha esperada ya pasó, puede hacer falta actualizar el último inicio. La duración puede variar y esta estimación no debe usarse como método anticonceptivo. [Office on Women’s Health](https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle)
 
 ## Propuesta de negocio
+
+La hoja de ruta contempla una app web para consultar el historial con la misma cuenta y el acceso de pareja mediante una invitación de solo lectura. La usuaria elegiría qué fechas o resúmenes compartir. Los registros privados y las notas quedarían fuera del permiso por defecto. La invitación tendría vencimiento y opción de revocar el acceso.
 
 La versión gratuita conservaría el registro, el calendario y las estadísticas básicas. **Seluna Plus** podría ofrecer una cuota mayor de consultas educativas y resúmenes bajo solicitud. Una prueba de interés mediría frecuencia de registro, consultas completadas, costo medio por consulta y disposición a pagar. El modelo evita condicionar el acceso al historial personal a una suscripción. Los planes y cobros son una propuesta para evaluar después de la beta.
 

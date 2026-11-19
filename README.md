@@ -33,13 +33,15 @@ Abre esta carpeta como proyecto, usa JDK 17 y Android SDK 35, selecciona la vari
 
 El APK queda en `app/build/outputs/apk/debug/app-debug.apk`. El acceso principal usa Firebase Authentication. El diario sigue disponible en el dispositivo durante una sesión iniciada. Para la demostración del asistente, usa el emulador Android estándar. El APK de depuración apunta a `10.0.2.2:8787`, la dirección con la que el emulador llega al equipo anfitrión.
 
-En la APK de depuración, **Probar con datos de ejemplo** abre uno de estos perfiles locales. El seeder carga los ejemplos la primera vez y conserva las ediciones posteriores. Para entrar por **Acceder a un perfil local existente**, usa la contraseña `SelunaDemo26!` después de crear el perfil de ejemplo.
+En la APK de depuración, **Probar con datos de ejemplo** abre uno de estos perfiles locales. También puedes usar el correo correspondiente y la contraseña `SelunaDemo26!` en **Iniciar sesión**. El seeder carga los ejemplos la primera vez y conserva las ediciones posteriores.
 
 | Perfil ficticio | Correo local | Datos iniciales |
 | --- | --- | --- |
 | Seguimiento de ciclo | `demo@seluna.example` | Tres inicios y seis registros ficticios. |
 | Ciclos variables y síntomas | `demo-sintomas@seluna.example` | Intervalos irregulares y seis registros ficticios. |
 | Primer uso sin historial | `demo-inicio@seluna.example` | Onboarding y diario vacío. |
+
+La APK **release** usa las cuentas de Firebase de `seluna-app`. Puedes crear una desde **Crear una cuenta** o iniciar sesión con un correo y contraseña ya registrados en ese proyecto. El mismo acceso funciona en la beta y en la versión final con Firebase configurado. Los perfiles del seeder se incluyen en la compilación de depuración. Para distribuir un APK final, fírmalo con la clave de Seluna. [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Firma Android](https://developer.android.com/studio/publish/app-signing)
 
 ## Registro de Firebase
 
@@ -56,9 +58,13 @@ Habilita **Authentication → Correo electrónico/contraseña** y usa **Cloud Fi
 
 En Android, crea una cuenta por correo desde el acceso inicial. Aparecerá en **Authentication → Usuarios**. Configura el ciclo y el objetivo durante el onboarding. Puedes cambiar la foto en **Mi perfil y ciclo**. La foto y el diario se guardan en el almacenamiento privado de la app.
 
-En **Hoy → Copia en Firebase**, confirma **Guardar copia en Firebase** para enviar configuración, inicios y diario, incluidas las notas. El documento aparece en **Firestore Database → Datos → `users/{uid}/backups/current`**. Restaurar añade los datos ausentes y conserva las ediciones de SQLite. Los perfiles locales existentes pueden vincular una cuenta de Firebase desde esa pantalla.
+En **Hoy → Copia en Firebase → Activar copia automática**, confirma el envío de configuración, inicios y diario, incluidas las notas. Seluna guarda cada cambio en SQLite y respalda los cambios mientras la app está abierta y tiene conexión. Si el envío falla, el diario queda disponible en el equipo y la app reintenta durante el uso o al volver a abrirla. La copia aparece en **Firestore Database → Datos → `users/{uid}/backups/current`**.
+
+En un dispositivo sin historial local, entra con la misma cuenta de Firebase. Seluna intenta recuperar su copia antes del onboarding. La activación de nuevas copias se elige por dispositivo. Si el móvil y Firebase tienen cambios distintos, la app conserva ambas versiones y pide revisar la copia. **Restaurar copia** añade datos ausentes. **Guardar copia en Firebase** reemplaza la copia tras confirmación. La foto sigue guardándose solo en el equipo.
 
 Las reglas están desplegadas en `seluna-app`. La prueba en Android guardó una copia con seis registros ficticios y tres inicios, recuperó un registro del diario y verificó que Firestore rechaza una lectura anónima.
+
+La prueba de respaldo automático guardó un registro ficticio en un emulador. Al entrar con la misma cuenta en un segundo emulador, el registro apareció en el diario sin pulsar **Restaurar copia**.
 
 [Consola de Authentication](docs/capturas/firebase-auth.png) · [Copia en Firestore](docs/capturas/firebase-firestore.png) · [Reglas activas](docs/capturas/firebase-reglas.png)
 
