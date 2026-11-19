@@ -43,6 +43,8 @@ Habilita **Authentication → Correo electrónico/contraseña** y usa **Cloud Fi
 
 En Android, accede a un perfil en SQLite y abre **Hoy → Copia en Firebase**. Crea o inicia sesión en una cuenta por correo. Aparecerá en **Authentication → Usuarios**. **Guardar copia en Firebase** envía el diario, las notas y los inicios vinculados a esa cuenta, tras confirmar. En la consola queda bajo **Firestore Database → Datos → `users/{uid}/backups/current`**. Restaurar añade los datos ausentes y conserva las ediciones de SQLite. El seguimiento diario funciona con la base local y la copia a la nube es manual.
 
+Las reglas están desplegadas en `seluna-app`. La prueba en Android guardó una copia con seis registros ficticios y tres inicios, recuperó un registro del diario y verificó que Firestore rechaza una lectura anónima.
+
 Para administrar Firebase, abre una terminal nueva con `pwsh -NoProfile -NoExit -File .\scripts\Firebase-Seluna.ps1`. El acceso por código usa `entrega/firebase-luisa-cli`, separado de las sesiones habituales. Usa siempre `--project seluna-app` y la ruta al `firebase.json` del proyecto al desplegar reglas. Al terminar, ejecuta `pwsh -NoProfile -File .\scripts\Firebase-Seluna.ps1 -Cerrar` desde la raíz del proyecto para retirar la sesión temporal. [Referencia de Firebase CLI](https://firebase.google.com/docs/cli)
 
 ## Probar el asistente

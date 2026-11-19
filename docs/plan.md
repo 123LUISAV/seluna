@@ -47,9 +47,9 @@ El diario y la cuenta principal funcionan en SQLite sin conexión. La copia manu
 
 ## Cierre de la entrega
 
-1. **Firebase.** Authentication ya aceptó una cuenta ficticia desde Android. Firestore devolvió `PERMISSION_DENIED` en `seluna-app`. Tras autorizar Firebase CLI con la cuenta de Luisa, revisar las reglas activas, aplicar `firestore.rules` si corresponde y verificar una copia y restauración reales con el perfil ficticio. Las reglas ya se probaron con una cuenta propietaria, otra cuenta y un visitante en el emulador de Firebase.
+1. **Firebase verificado.** Las reglas de `firestore.rules` están activas en `seluna-app`. Desde Android se guardó una copia con seis registros ficticios y tres inicios, y se recuperó un registro eliminado del dispositivo. Se confirmó que Firestore rechaza la lectura anónima.
 2. **Diseño.** Comparar la beta actual con Figma en un teléfono pequeño y otro ancho. Priorizar la jerarquía de Hoy, la leyenda del calendario, la legibilidad de los formularios y las tarjetas de bienestar.
-3. **Exposición.** Ensayar con la cuenta de muestra. Mostrar una fecha real y una estimada, el registro, los dos modos del informe PDF y una respuesta de la guía local. Mostrar la copia en consola cuando se haya verificado en `seluna-app`.
+3. **Exposición.** Ensayar con la cuenta de muestra. Mostrar una fecha real y una estimada, el registro, los dos modos del informe PDF, una respuesta de la guía local y la copia ficticia de Firestore.
 
 ## Estimación del próximo inicio
 
