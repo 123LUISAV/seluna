@@ -16,6 +16,19 @@ Abre esta carpeta como proyecto, usa JDK 17 y Android SDK 35, selecciona la vari
 
 El APK queda en `app/build/outputs/apk/debug/app-debug.apk`. El seguimiento y las cuentas locales funcionan en el dispositivo. Para la demostración del asistente, usa el emulador Android estándar. El APK de depuración apunta a `10.0.2.2:8787`, la dirección con la que el emulador llega al equipo anfitrión.
 
+## Registro de Firebase
+
+Para preparar la integración con Firebase, registra una app Android en el proyecto de tu cuenta.
+
+| Campo | Valor |
+| --- | --- |
+| Nombre del proyecto | `Seluna` |
+| Nombre del paquete Android | `com.seluna.app` |
+| Alias de la app | `Seluna` |
+| SHA‑1 | Puedes dejarlo en blanco para correo y contraseña. Añádelo si vas a habilitar Google como proveedor. |
+
+Habilita **Authentication → Correo electrónico/contraseña** y crea **Cloud Firestore** en **modo producción**. Descarga `google-services.json` desde la configuración de la app Android. Ese archivo irá en `app/google-services.json` al integrar Firebase. La beta disponible ejecuta el inicio de sesión y la persistencia en el dispositivo. Para sincronizar los registros, las reglas de Firestore deberán limitar la lectura y escritura al UID de cada usuaria. [Configuración de Android](https://firebase.google.com/docs/android/setup) · [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Reglas de Firestore](https://firebase.google.com/docs/firestore/security/rules-conditions)
+
 ## Probar el asistente
 
 Con Node.js 22 o superior, inicia el servidor de demostración desde la raíz del proyecto. Devuelve una respuesta identificada como demostración local.
