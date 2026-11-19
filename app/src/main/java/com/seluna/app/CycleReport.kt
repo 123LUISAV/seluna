@@ -8,20 +8,32 @@ import java.io.OutputStream
 import java.time.LocalDate
 import java.util.Locale
 
-fun symptomCounts(entries: List<DailyEntry>): List<Pair<String, Int>> = entries
-    .flatMap { entry ->
-        entry.symptoms.substringAfter("\nSíntomas: ", entry.symptoms)
-            .split(',')
-            .map { it.trim().lowercase(Locale.forLanguageTag("es")) }
-            .filter { it.isNotBlank() && it != "ninguno" }
-            .distinct()
-    }
-    .groupingBy { it }.eachCount().toList()
-    .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
-    .map { (name, count) -> name.replaceFirstChar { it.titlecase(Locale.forLanguageTag("es")) } to count }
+fun symptomCounts(entries: List<DailyEntry>): List<Pair<String, Int>> =
+    entries
+        .flatMap { entry ->
+            entry.symptoms
+                .substringAfter("\nSíntomas: ", entry.symptoms)
+                .split(',')
+                .map { it.trim().lowercase(Locale.forLanguageTag("es")) }
+                .filter { it.isNotBlank() && it != "ninguno" }
+                .distinct()
+        }
+        .groupingBy { it }
+        .eachCount()
+        .toList()
+        .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
+        .map { (name, count) ->
+            name.replaceFirstChar { it.titlecase(Locale.forLanguageTag("es")) } to count
+        }
 
 object CycleReport {
-    fun write(output: OutputStream, entries: Int, starts: Int, estimate: CycleEstimate?, symptoms: List<Pair<String, Int>>) {
+    fun write(
+        output: OutputStream,
+        entries: Int,
+        starts: Int,
+        estimate: CycleEstimate?,
+        symptoms: List<Pair<String, Int>>,
+    ) {
         val document = PdfDocument()
         try {
             val page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
@@ -40,7 +52,12 @@ object CycleReport {
             label("Resumen de ciclo · ${LocalDate.now()}", 132, 20, ink, true)
             label("Registros diarios: $entries", 182, 15)
             label("Inicios de menstruación registrados: $starts", 208, 15)
-            label(estimate?.let { "Duración estimada del ciclo: ${it.averageLength} días" } ?: "Duración estimada: pendiente de datos", 234, 15)
+            label(
+                estimate?.let { "Duración estimada del ciclo: ${it.averageLength} días" }
+                    ?: "Duración estimada: pendiente de datos",
+                234,
+                15,
+            )
             label("Síntomas más frecuentes", 286, 19, plum, true)
             if (symptoms.isEmpty()) label("Sin síntomas registrados", 320, 15)
             symptoms.take(10).forEachIndexed { index, (name, count) ->
