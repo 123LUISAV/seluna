@@ -22,10 +22,11 @@ Cuando las fechas, los síntomas y las notas quedan repartidos entre el calendar
 | Hoy | Consultar el día desde el último inicio real y ver la próxima fecha estimada cuando está disponible. |
 | Calendario | Cambiar el mes, seleccionar una fecha y registrar o quitar un inicio de menstruación. |
 | Registro | Guardar, consultar, editar y eliminar registros por fecha. |
-| Estadísticas | Ver duración del ciclo, recuentos e indicadores derivados del historial y exportar un resumen en PDF. |
-| Asistente | Enviar preguntas escritas por decisión de la usuaria. La conversación se mantiene en memoria mientras se usa la app. |
+| Estadísticas | Consultar recuentos, abrir guías de bienestar y exportar un PDF con resumen o detalle diario. |
+| Asistente | Resolver preguntas de la guía sin conexión y enviar otras consultas a Qwen con contexto limitado. |
+| Copia en Firebase | Vincular una cuenta por correo y confirmar la copia del diario a Firestore. Restaurar incorpora los datos que falten en el perfil local. |
 
-La beta usa una cuenta en el dispositivo. Sincronización, inicio de sesión con Google o Apple, suscripciones y recomendaciones médicas individualizadas quedan fuera del alcance académico. El seguimiento funciona sin red. El chat en vivo requiere un servidor con clave y conexión a B.AI.
+El diario y la cuenta principal funcionan en SQLite sin conexión. La copia manual de Firebase requiere una cuenta vinculada y acceso al proyecto desplegado. El chat en vivo requiere un servidor con clave y conexión a B.AI. Los accesos con Google y Apple, la sincronización automática y la suscripción son ampliaciones posteriores a esta beta.
 
 ## Metodología
 
@@ -43,6 +44,12 @@ La beta usa una cuenta en el dispositivo. Sincronización, inicio de sesión con
 | Modelos orientados a objetos | `UserProfile`, `CycleSettings`, `DailyEntry` y `CycleEstimate` encapsulan propiedades. `SelunaStore` gestiona las consultas y relaciones. |
 | Listados | El calendario y las listas de diario, estadísticas y chat usan `RecyclerView`, con acciones por elemento. |
 | Formularios | El perfil del ciclo y el diario validan los valores antes de persistirlos. |
+
+## Cierre de la entrega
+
+1. **Firebase.** Authentication ya aceptó una cuenta ficticia desde Android. Firestore devolvió `PERMISSION_DENIED` en `seluna-app`. Tras autorizar Firebase CLI con la cuenta de Luisa, revisar las reglas activas, aplicar `firestore.rules` si corresponde y verificar una copia y restauración reales con el perfil ficticio. Las reglas ya se probaron con una cuenta propietaria, otra cuenta y un visitante en el emulador de Firebase.
+2. **Diseño.** Comparar la beta actual con Figma en un teléfono pequeño y otro ancho. Priorizar la jerarquía de Hoy, la leyenda del calendario, la legibilidad de los formularios y las tarjetas de bienestar.
+3. **Exposición.** Ensayar con la cuenta de muestra. Mostrar una fecha real y una estimada, el registro, los dos modos del informe PDF y una respuesta de la guía local. Mostrar la copia en consola cuando se haya verificado en `seluna-app`.
 
 ## Estimación del próximo inicio
 

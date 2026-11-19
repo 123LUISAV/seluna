@@ -14,6 +14,8 @@ Capturas del emulador Android con perfiles y registros ficticios. El chat muestr
 | --- | --- | --- | --- | --- |
 | <img src="docs/capturas/hoy.png" alt="Día del ciclo y fecha estimada" width="180"> | <img src="docs/capturas/calendario.png" alt="Calendario con un inicio de menstruación registrado" width="180"> | <img src="docs/capturas/registro.png" alt="Diario con un registro de flujo, ánimo y síntomas" width="180"> | <img src="docs/capturas/estadisticas.png" alt="Duración estimada y recuentos derivados del diario" width="180"> | <img src="docs/capturas/chat.png" alt="Preguntas rápidas y respuesta de la guía de Seluna" width="180"> |
 
+[Tarjeta editorial de bienestar](docs/capturas/bienestar.png) · [Vista del informe de salud](docs/capturas/informe.png)
+
 ## Ejecutar en Android Studio
 
 Abre esta carpeta como proyecto, usa JDK 17 y Android SDK 35, selecciona la variante `debug` y ejecuta en un teléfono o emulador con Android 8.0 o superior. Desde PowerShell también puedes compilar y ejecutar el análisis estático.
@@ -62,7 +64,7 @@ El servidor lee la clave exclusivamente de `server/.env`, excluido de Git, y usa
 
 ## Recorrido para exponer
 
-1. En la app, crea una cuenta local ficticia y selecciona un inicio de menstruación reciente.
+1. Entra con el perfil de muestra o crea una cuenta local ficticia. El formulario nuevo separa las fechas y duraciones del ciclo de la elección de un objetivo.
 2. Muestra el anillo de Hoy y la fecha estimada. Abre el calendario y selecciona un día.
 3. Guarda un registro con flujo, ánimo, síntomas e intensidad. En **Estadísticas → Exportar informe de salud en PDF**, selecciona el resumen o incluye la tabla diaria. El informe se genera en el dispositivo y excluye las notas personales.
 4. Abre el chat y selecciona «¿Cómo se cuenta el día 1 del ciclo?» para probar la guía local. Para mostrar el servidor, escribe una pregunta diferente, como «¿Cómo puedo preparar preguntas para mi próxima consulta sobre mi ciclo?».

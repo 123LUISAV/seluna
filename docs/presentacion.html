@@ -225,6 +225,16 @@
       .step p {
         font-size: 14px;
       }
+      .checks {
+        margin: 18px 0 0;
+        padding-left: 21px;
+        color: #675662;
+        font-size: clamp(15px, 1.35vw, 18px);
+        line-height: 1.45;
+      }
+      .checks li + li {
+        margin-top: 8px;
+      }
       .bottom {
         display: flex;
         align-items: center;
@@ -302,6 +312,9 @@
           padding-top: 25px;
           padding-bottom: 25px;
           align-content: start;
+        }
+        .slide > * {
+          min-width: 0;
         }
         .grid {
           grid-template-columns: 1fr;
@@ -402,6 +415,14 @@
       .deck:has(.notes.open) .shot img {
         height: min(36dvh, 340px);
       }
+      @media (min-width: 701px) {
+        .deck:has(.notes.open) .ring {
+          width: min(31vw, 39dvh, 340px);
+        }
+        .deck:has(.notes.open) .chat-cards .card {
+          padding-block: 12px;
+        }
+      }
       .note-head {
         position: sticky;
         top: -15px;
@@ -458,13 +479,23 @@
         display: grid;
         place-items: center;
       }
+      .report-shot img {
+        height: min(55dvh, 460px);
+        border-radius: 10px;
+      }
+      .gallery .shot img {
+        height: min(42dvh, 400px);
+      }
+      .deck:has(.notes.open) .gallery .shot img {
+        height: min(33dvh, 310px);
+      }
       @media (max-width: 700px) {
         .gallery {
           grid-template-columns: repeat(4, minmax(130px, 1fr));
           overflow-x: auto;
           padding-bottom: 8px;
         }
-        .shot img {
+        .gallery .shot img {
           height: min(38dvh, 330px);
         }
         .shot p {
@@ -472,6 +503,9 @@
         }
         .chat-shot img {
           height: min(35dvh, 320px);
+        }
+        .report-shot img {
+          max-height: 33dvh;
         }
         .notes {
           padding: 0 18px 8px;
@@ -537,7 +571,7 @@
             <div class="card">
               <b>Cómo</b>
               <p>
-                Formularios, almacenamiento local y una estimación explicable.
+                Configuración en dos pasos, almacenamiento local y una estimación explicable.
               </p>
             </div>
             <div class="card wide">
@@ -558,7 +592,7 @@
             <figure class="shot">
               <img src="capturas/hoy.png" alt="Pantalla Hoy de Seluna" />
               <figcaption>☼ Hoy</figcaption>
-              <p>Día del ciclo y estimación.</p>
+              <p>Anillo por fases y día del ciclo.</p>
             </figure>
             <figure class="shot">
               <img
@@ -566,7 +600,7 @@
                 alt="Pantalla Calendario de Seluna"
               />
               <figcaption>▦ Calendario</figcaption>
-              <p>Fechas e inicios reales.</p>
+              <p>Inicios registrados y fechas estimadas.</p>
             </figure>
             <figure class="shot">
               <img
@@ -614,11 +648,11 @@
       <section class="slide" aria-label="Diapositiva 5">
         <div class="grid">
           <div>
-            <div class="eyebrow">Construcción</div>
-            <h2>Datos propios, en el dispositivo.</h2>
+            <div class="eyebrow">Implementación</div>
+            <h2>Seguimiento local y copia opcional.</h2>
             <p class="lead">
-              La app conecta pantallas nativas con una base local y validaciones
-              antes de guardar.
+              SQLite guarda el historial por perfil. El perfil de muestra
+              permite empezar con ciclos y registros ficticios.
             </p>
             <div class="pills">
               <span class="pill">Kotlin</span><span class="pill">Android</span
@@ -637,17 +671,20 @@
             <div class="step">
               <span>02</span>
               <div>
-                <b>Persistencia</b>
-                <p>SQLite guarda los datos asociados a cada perfil local.</p>
+                <b>Copia manual en Firebase</b>
+                <p>
+                  Firebase Authentication identifica la cuenta. Firestore guarda
+                  la copia cuando la usuaria lo solicita.
+                </p>
               </div>
             </div>
             <div class="step">
               <span>03</span>
               <div>
-                <b>Interacción</b>
+                <b>Estado de la integración</b>
                 <p>
-                  RecyclerView presenta listas y celdas con acciones. Los
-                  formularios validan fechas y valores.
+                  Acceso con correo probado en Firebase. Reglas de Firestore
+                  probadas en el emulador local. Despliegue pendiente.
                 </p>
               </div>
             </div>
@@ -658,16 +695,15 @@
         <div class="grid">
           <div>
             <div class="eyebrow">Asistente opcional</div>
-            <h2>Preguntar cuando ella decida.</h2>
+            <h2>Guía local y chat con Qwen.</h2>
             <p>
-              La guía responde preguntas frecuentes sin conexión. Las demás
-              consultas pueden compartir hasta dos mensajes recientes con B.AI.
+              La guía responde preguntas frecuentes sin conexión. Para otras
+              consultas se envía el texto de la conversación a B.AI.
             </p>
             <div class="pills">
-              <span class="pill">Qwen3.8 Flash</span
-              ><span class="pill">qwen3.8-flash · B.AI</span>
+              <span class="pill">qwen3.8-flash · B.AI</span>
             </div>
-            <div class="cards" style="margin-top: 18px">
+            <div class="cards chat-cards" style="margin-top: 18px">
               <div class="card">
                 <b>Demostración</b>
                 <p>Respuesta de prueba sin credenciales.</p>
@@ -677,9 +713,6 @@
                 <p>Requiere conexión y un servidor configurado con la clave.</p>
               </div>
             </div>
-            <p class="small" style="margin-top: 12px">
-              Información general sobre bienestar menstrual.
-            </p>
           </div>
           <figure class="shot chat-shot">
             <img
@@ -693,59 +726,37 @@
       <section class="slide" aria-label="Diapositiva 7">
         <div class="grid">
           <div>
-            <div class="eyebrow">Método y viabilidad</div>
-            <h2>De los mockups a una beta.</h2>
+            <div class="eyebrow">Método y criterios de entrega</div>
+            <h2>Qué comprobar en la beta.</h2>
             <p>
-              Una entrega incremental permite comprobar cada recorrido con datos
-              ficticios antes de conectar el servicio real.
+              Desarrollo incremental a partir del mockup y la rúbrica, con
+              datos ficticios para probar cada recorrido.
             </p>
+            <ul class="checks">
+              <li><b>Formulario.</b> Rechazar fechas y valores inválidos.</li>
+              <li><b>Persistencia.</b> Reabrir la app y encontrar el registro guardado.</li>
+              <li><b>RecyclerView.</b> Abrir una fecha o un registro con un toque.</li>
+              <li><b>Informe.</b> Exportar el resumen o añadir la tabla diaria. Ambos excluyen las notas privadas.</li>
+            </ul>
           </div>
-          <div class="steps">
-            <div class="step">
-              <span>01</span>
-              <div>
-                <b>Diseño y aceptación</b>
-                <p>Traducir mockups y criterios en recorridos verificables.</p>
-              </div>
-            </div>
-            <div class="step">
-              <span>02</span>
-              <div>
-                <b>Seguimiento local</b>
-                <p>Modelos, SQLite, formularios y estados con historial.</p>
-              </div>
-            </div>
-            <div class="step">
-              <span>03</span>
-              <div>
-                <b>Asistente y entrega</b>
-                <p>
-                  Probar contrato en demo, configurar servicio y validar en
-                  Android.
-                </p>
-              </div>
-            </div>
-            <div class="step">
-              <span>04</span>
-              <div>
-                <b>Propuesta freemium</b>
-                <p>
-                  El registro básico sería gratuito. Plus podría ampliar
-                  consultas y resúmenes. Es una hipótesis por validar.
-                </p>
-              </div>
-            </div>
-          </div>
+          <figure class="shot report-shot">
+            <img src="capturas/informe.png" alt="Informe PDF de seguimiento menstrual con datos ficticios" />
+            <figcaption>Informe PDF generado en Android</figcaption>
+          </figure>
         </div>
       </section>
       <section class="slide" aria-label="Diapositiva 8">
         <div class="grid">
           <div>
             <div class="eyebrow">Cierre · demostración</div>
-            <h2>Pequeños registros,<br />mayor claridad.</h2>
+            <h2>Demostración con datos de muestra.</h2>
             <p class="lead">
-              Ahora mostraré cómo un dato se convierte en una historia útil:
-              perfil → inicio → registro → estadísticas.
+              Abrir Hoy, registrar un síntoma, revisar las estadísticas y
+              exportar el informe. En el chat, probar la guía sin conexión.
+            </p>
+            <p class="small" style="margin-top: 16px">
+              Propuesta Seluna Plus. Seguimiento gratuito y una suscripción
+              para ampliar las consultas y solicitar resúmenes.
             </p>
             <p class="author">
               <b>Gracias</b><br />Luisa Fernanda Velandia Salamanca · U00179371
@@ -786,12 +797,12 @@
       const notes = [
         `<p><b>Guion · 35–40 s.</b> Soy Luisa Fernanda Velandia Salamanca y presento Seluna, una beta Android para acompañar el registro del ciclo menstrual. Quise reunir información cotidiana en un espacio sencillo, donde cada persona pueda consultar su propio historial a su ritmo.</p>`,
         `<p><b>Guion · 40–45 s.</b> Identifiqué que cuando los inicios, síntomas y notas están repartidos en distintos lugares es difícil reconstruir un ciclo. Mi objetivo fue crear una aplicación que reúna esos datos. Lo hago con formularios, almacenamiento local y una estimación explicable, para ayudar a recordar fechas, observar patrones y preparar preguntas informadas.</p>`,
-        `<p><b>Guion · 45–50 s.</b> Organicé la experiencia en cuatro secciones. Hoy muestra el día del ciclo y la próxima estimación. Calendario permite seleccionar una fecha y registrar un inicio real. En Registro se pueden guardar, editar y eliminar datos diarios. Estadísticas resume la información que ya se ha registrado.</p>`,
-        `<p><b>Guion · 45–50 s.</b> Para la estimación ordeno los inicios reales y calculo la distancia en días entre fechas consecutivas. Si tengo intervalos ficticios de 28 y 30 días, su promedio es 29. Sumo esos 29 días al último inicio. Con un solo inicio utilizo la duración habitual configurada. La fecha aproximada sirve para orientar el seguimiento del ciclo.</p><p class="source">Referencia · <a href="https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle">Office on Women’s Health · Your menstrual cycle</a></p>`,
-        `<p><b>Guion · 45–50 s.</b> Desarrollé la interfaz nativa en Kotlin. Los modelos representan perfil, configuración del ciclo, registro y estimación. SQLite persiste los datos por perfil local. Usé RecyclerView para el calendario y los listados con acciones por elemento, y validé fechas y valores en los formularios antes de guardar.</p><p class="source">Referencias: <a href="https://developer.android.com/training/data-storage/sqlite">Android · SQLite</a> · <a href="https://developer.android.com/develop/ui/views/layout/recyclerview">Android · RecyclerView</a>.</p>`,
-        `<p><b>Guion · 45–50 s.</b> Añadí una guía que responde preguntas frecuentes dentro de la app, sin usar tokens. La captura muestra una de esas respuestas. Para otras preguntas uso Qwen3.8 Flash, identificado como qwen3.8-flash. Solo envío el texto del chat y, si es una pregunta de seguimiento, hasta dos mensajes anteriores. El diario permanece en el dispositivo. Qwen requiere conexión, servidor configurado y clave.</p><p class="source"><a href="https://docs.b.ai/llmservice/models/qwen3-8-flash/">B.AI · Qwen3.8 Flash</a></p>`,
-        `<p><b>Guion · 45–50 s.</b> Primero traduje los mockups y la rúbrica a recorridos. Luego construí la persistencia local y los formularios. Finalmente conecté el asistente y comprobé el flujo en el emulador. Como propuesta de negocio planteo mantener gratuitos el historial y las funciones básicas. Seluna Plus podría ampliar el número de consultas y ofrecer resúmenes a petición. Mediría el costo medio por consulta y la disposición a pagar antes de implementar cobros.</p>`,
-        `<p><b>Guion · 40–60 s.</b> Para terminar voy a demostrar el recorrido con datos ficticios: configuro el perfil, registro un inicio, agrego un día al diario y reviso las estadísticas. Después mostraré el chat y explicaré si está en modo demostración o conectado al servicio real. Gracias por escucharme.</p><p><b>Preguntas para preparar</b></p><ul><li>¿Por qué elegí almacenamiento local y qué ocurre al cambiar de dispositivo?</li><li>¿Cómo se calcula la estimación con uno o varios inicios y qué limitaciones tiene?</li><li>¿Qué datos se envían al chat y dónde se mantiene la clave?</li><li>¿Dónde se usa RecyclerView y qué acción tiene cada elemento?</li><li>¿Qué validaciones impiden guardar datos inconsistentes?</li><li>¿Qué ofrece la beta y qué pertenece a la propuesta futura de negocio?</li></ul>`,
+        `<p><b>Guion · 45–55 s.</b> Después de crear un perfil, primero configuro el ciclo y luego elijo un objetivo y, si quiero, algunas preferencias. En Hoy, el anillo segmentado ubica el día en la fase estimada. El calendario diferencia las fechas registradas de las estimadas. En Registro agrego o corrijo síntomas y en Estadísticas consulto el resumen de mi historial.</p>`,
+        `<p><b>Guion · 45–50 s.</b> Para estimar la próxima fecha, calculo los días entre inicios consecutivos. Con dos intervalos ficticios de 28 y 30 días, el promedio es 29. Sumo esos días al último inicio. Con un solo inicio uso la duración habitual configurada. El ciclo puede variar, por eso la app conserva la distinción entre una fecha registrada y una estimada.</p><p class="source">Referencia · <a href="https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle">Office on Women’s Health · Your menstrual cycle</a></p>`,
+        `<p><b>Guion · 50–60 s.</b> Construí Seluna en Android Studio con Kotlin. Los modelos representan el perfil, el diario y el ciclo. SQLite conserva el historial de cada perfil local, y la opción de muestra inicia con registros ficticios. Cuando se solicita una copia, Firebase Authentication identifica la cuenta y Firestore recibe el diario de ese perfil. Restaurar incorpora lo que falta y conserva las ediciones locales.</p><p>Probé el inicio de sesión en el proyecto Firebase. Las reglas pasaron las pruebas en el emulador de Firestore y el despliegue queda pendiente.</p><p class="source">Referencias · <a href="https://developer.android.com/training/data-storage/sqlite">Android · SQLite</a> · <a href="https://firebase.google.com/docs/firestore/security/rules-conditions">Firebase · Condiciones de reglas de seguridad</a>.</p>`,
+        `<p><b>Guion · 45–55 s.</b> Si pregunto cómo se cuenta el día uno, la guía responde en el teléfono, incluso sin conexión. También puedo leer fichas de bienestar, como la de Infusiones, que lleva una foto propia. Para otras consultas, el servidor usa Qwen3.8 Flash en B.AI. Envía la pregunta y, cuando hace falta contexto, hasta dos mensajes anteriores del chat. La clave se configura en el servidor.</p><p class="source"><a href="https://docs.b.ai/llmservice/models/qwen3-8-flash/">B.AI · Qwen3.8 Flash</a></p>`,
+        `<p><b>Guion · 45–55 s.</b> Partí de los mockups y trabajé por incrementos. Para comprobar los requisitos puedo abrir un día del calendario o una fila del diario, que son elementos interactivos de RecyclerView. En el formulario pruebo una fecha inválida, guardo una válida y vuelvo a abrir la app para comprobar la persistencia. En Estadísticas puedo generar el informe que ven aquí. La usuaria decide entre el resumen y la tabla diaria. Las notas personales permanecen fuera de ambos informes.</p><p class="source"><a href="https://developer.android.com/develop/ui/views/layout/recyclerview">Android · RecyclerView</a></p>`,
+        `<p><b>Guion · 45–60 s.</b> Entro con «Entrar con datos de muestra» para abrir un perfil con historia ficticia. Señalo el anillo de Hoy, guardo un síntoma y abro Estadísticas. Allí selecciono «Exportar informe de salud en PDF» y muestro las dos opciones. Para el chat, elijo la pregunta sobre el día uno y muestro la respuesta de la guía. Como propuesta futura, Seluna Plus ampliaría las consultas con IA y ofrecería resúmenes a petición. Antes de cobrar mediría el costo medio de cada consulta y cuántas usuarias usarían Plus.</p><p><b>Preguntas para preparar</b></p><ul><li>¿Qué queda en SQLite y cuándo sale una copia hacia Firebase?</li><li>¿Cómo se calcula la estimación con uno o varios inicios?</li><li>¿Qué cambia entre el resumen PDF y el informe con tabla diaria?</li><li>¿Dónde se usa RecyclerView y qué acción tiene cada elemento?</li><li>¿Cómo distingo en la demo una respuesta de la guía y una de Qwen?</li></ul>`,
       ];
       let index = 0;
       const slides = [...document.querySelectorAll(".slide")],
