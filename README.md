@@ -60,7 +60,7 @@ El servidor lee la clave exclusivamente de `server/.env`, excluido de Git, y usa
 
 1. En la app, crea una cuenta local ficticia y selecciona un inicio de menstruación reciente.
 2. Muestra el anillo de Hoy y la fecha estimada. Abre el calendario y selecciona un día.
-3. Guarda un registro con flujo, ánimo, síntomas e intensidad. Revisa los recuentos y la exportación PDF en Estadísticas.
+3. Guarda un registro con flujo, ánimo, síntomas e intensidad. En **Estadísticas → Exportar informe de salud en PDF**, selecciona el resumen o incluye la tabla diaria. El informe se genera en el dispositivo y excluye las notas personales.
 4. Abre el chat y selecciona «¿Cómo se cuenta el día 1 del ciclo?» para probar la guía local. Para mostrar el servidor, escribe una pregunta diferente, como «¿Cómo puedo preparar preguntas para mi próxima consulta sobre mi ciclo?».
 
 ## Publicar desde una cuenta aislada

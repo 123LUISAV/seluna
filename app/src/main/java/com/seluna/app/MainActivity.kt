@@ -803,30 +803,42 @@ class MainActivity : Activity() {
                 10,
             )
         editorial("Guías de bienestar", guide.articles.filter(GuideArticle::wellness))
+        add(body, button("Exportar informe de salud en PDF") { exportHealthReport() }, 16)
         add(
             body,
-            button("Exportar resumen en PDF") {
-                startActivityForResult(
-                    Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                        addCategory(Intent.CATEGORY_OPENABLE)
-                        type = "application/pdf"
-                        putExtra(Intent.EXTRA_TITLE, "Seluna-resumen-${LocalDate.now()}.pdf")
-                    },
-                    EXPORT_REPORT,
-                )
-            },
-            16,
-        )
-        add(
-            body,
-            text("El resumen incluye recuentos y estimaciones. Elige dónde guardarlo.", 13, plum),
+            text(
+                "Puedes exportar un resumen o añadir el detalle del diario. El PDF excluye las notas personales.",
+                13,
+                plum,
+            ),
             8,
         )
     }
 
+    private fun exportHealthReport() {
+        AlertDialog.Builder(this)
+            .setTitle("Contenido del informe")
+            .setItems(arrayOf("Solo resumen", "Resumen con detalle del diario")) { _, selected ->
+                startActivityForResult(
+                    Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "application/pdf"
+                        putExtra(Intent.EXTRA_TITLE, "Seluna-informe-${LocalDate.now()}.pdf")
+                    },
+                    if (selected == 0) EXPORT_REPORT else EXPORT_REPORT_WITH_DIARY,
+                )
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != EXPORT_REPORT || resultCode != RESULT_OK || store.currentUser() == null)
+        if (
+            requestCode !in EXPORT_REPORT..EXPORT_REPORT_WITH_DIARY ||
+                resultCode != RESULT_OK ||
+                store.currentUser() == null
+        )
             return
         val target = data?.data ?: return
         val entries = store.entries()
@@ -836,13 +848,13 @@ class MainActivity : Activity() {
             output.use {
                 CycleReport.write(
                     it,
-                    entries.size,
-                    store.cycleStarts().size,
+                    entries,
+                    store.cycleStarts(),
                     store.estimate(),
-                    symptomCounts(entries),
+                    includeDiary = requestCode == EXPORT_REPORT_WITH_DIARY,
                 )
             }
-            toast("Resumen PDF guardado")
+            toast("Informe PDF guardado")
         } catch (_: Exception) {
             toast("No se pudo guardar el resumen PDF")
         }
@@ -1160,5 +1172,6 @@ class MainActivity : Activity() {
 
     private companion object {
         const val EXPORT_REPORT = 1001
+        const val EXPORT_REPORT_WITH_DIARY = 1002
     }
 }
