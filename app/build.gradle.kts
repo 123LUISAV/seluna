@@ -1,8 +1,12 @@
 import java.net.URI
 
 plugins {
-    id("com.android.application") version "8.7.3"
-    id("org.jetbrains.kotlin.android") version "2.1.0"
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+if (file("google-services.json").isFile) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 val assistantUrl = providers.gradleProperty("selunaAssistantUrl").orNull
@@ -44,4 +48,7 @@ kotlin { jvmToolchain(17) }
 
 dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
 }

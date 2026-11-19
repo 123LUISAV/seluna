@@ -35,7 +35,7 @@ Para preparar la integración con Firebase, registra una app Android en el proye
 | Alias de la app | `Seluna` |
 | SHA‑1 | Puedes dejarlo en blanco para correo y contraseña. Añádelo si vas a habilitar Google como proveedor. |
 
-Habilita **Authentication → Correo electrónico/contraseña** y crea **Cloud Firestore** en **modo producción**. Descarga `google-services.json` desde la configuración de la app Android. Ese archivo irá en `app/google-services.json` al integrar Firebase. La beta disponible ejecuta el inicio de sesión y la persistencia en el dispositivo. Para sincronizar los registros, las reglas de Firestore deberán limitar la lectura y escritura al UID de cada usuaria. [Configuración de Android](https://firebase.google.com/docs/android/setup) · [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Reglas de Firestore](https://firebase.google.com/docs/firestore/security/rules-conditions)
+Habilita **Authentication → Correo electrónico/contraseña** y crea **Cloud Firestore** en **modo producción**. Descarga `google-services.json` desde la configuración de la app Android y colócalo en `app/google-services.json`. Gradle aplica el complemento Google Services cuando encuentra ese archivo. El proyecto incluye los SDK de Authentication y Firestore. El flujo actual inicia sesión y guarda los registros en SQLite. Al conectar la sincronización, las reglas de Firestore deberán limitar la lectura y escritura al UID de cada usuaria. [Configuración de Android](https://firebase.google.com/docs/android/setup) · [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Reglas de Firestore](https://firebase.google.com/docs/firestore/security/rules-conditions)
 
 ## Probar el asistente
 
