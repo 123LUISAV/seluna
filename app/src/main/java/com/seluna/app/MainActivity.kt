@@ -2,7 +2,10 @@ package com.seluna.app
 
 import android.app.*
 import android.content.Intent
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -189,13 +192,22 @@ class MainActivity : Activity() {
 
     private fun auth(register: Boolean) {
         base()
-        gap(body, 30)
+        val welcome =
+            card(pink).apply {
+                background =
+                    GradientDrawable(
+                            GradientDrawable.Orientation.TL_BR,
+                            intArrayOf(pink, ivory, mint),
+                        )
+                        .apply { cornerRadius = dp(24).toFloat() }
+                setPadding(dp(22), dp(24), dp(22), dp(22))
+            }
         add(
-            body,
+            welcome,
             text(if (register) "Tu espacio, a tu ritmo" else "Qué bueno verte", 30, ink, true),
         )
         add(
-            body,
+            welcome,
             text(
                 if (register) "Crea tu cuenta y empieza a conocerte mejor."
                 else "Inicia sesión para continuar tu bienestar.",
@@ -204,7 +216,8 @@ class MainActivity : Activity() {
             ),
             8,
         )
-        gap(body, 26)
+        add(body, welcome, 10)
+        val form = card()
         val name = input("Tu nombre")
         val email =
             input(
@@ -216,12 +229,13 @@ class MainActivity : Activity() {
                 "Contraseña",
                 type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD,
             )
-        if (register) add(body, name)
-        add(body, email, 12)
-        add(body, pass, 12)
-        gap(body, 18)
+        listOf(name, email, pass).forEach { it.background = bg(ivory, 14) }
+        if (register) add(form, name)
+        add(form, email, if (register) 12 else 0)
+        add(form, pass, 12)
+        gap(form, 18)
         add(
-            body,
+            form,
             button(if (register) "Crear cuenta" else "Iniciar sesión") {
                 val e = email.text.toString().trim()
                 val p = pass.text.toString()
@@ -253,6 +267,7 @@ class MainActivity : Activity() {
                 }
             },
         )
+        add(body, form, 16)
         add(
             body,
             button(if (register) "Ya tengo una cuenta" else "Crear una cuenta", true) {
@@ -292,22 +307,14 @@ class MainActivity : Activity() {
         val c = card(pink)
         add(c, text("TU CICLO HOY", 12, plum, true))
         gap(c, 16)
-        val ring =
-            text(if (days > 0) "Día\n$days" else "✿", 28, plum, true).apply {
-                gravity = Gravity.CENTER
-                background =
-                    GradientDrawable().apply {
-                        shape = GradientDrawable.OVAL
-                        setColor(ivory)
-                        setStroke(dp(6), plum)
-                    }
-                setPadding(0, dp(28), 0, dp(28))
-            }
+        val est = store.estimate()
+        val ring = CycleRing(days, est?.averageLength ?: store.settings().cycleLength)
+        ring.contentDescription =
+            if (days > 0) "Día $days desde el último inicio registrado" else "Sin inicio registrado"
         val wrap = row().apply { gravity = Gravity.CENTER }
-        wrap.addView(ring, LinearLayout.LayoutParams(dp(145), dp(145)))
+        wrap.addView(ring, LinearLayout.LayoutParams(dp(190), dp(190)))
         c.addView(wrap)
         gap(c, 16)
-        val est = store.estimate()
         val next = est?.nextStart?.let(LocalDate::parse)
         val forecast =
             when {
@@ -345,6 +352,54 @@ class MainActivity : Activity() {
             },
             14,
         )
+    }
+
+    /** Decorative segments show elapsed days only; they do not imply cycle phases. */
+    private inner class CycleRing(private val day: Int, private val length: Int) :
+        View(this@MainActivity) {
+        private val brush = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val bounds = RectF()
+        private val arcColors =
+            intArrayOf(
+                plum,
+                Color.rgb(205, 170, 184),
+                Color.rgb(180, 208, 199),
+                Color.rgb(185, 189, 220),
+            )
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width / 2f
+            val cy = height / 2f
+            val radius = minOf(width, height) * .38f
+            bounds.set(cx - radius, cy - radius, cx + radius, cy + radius)
+            brush.style = Paint.Style.STROKE
+            brush.strokeWidth = dp(11).toFloat()
+            brush.strokeCap = Paint.Cap.ROUND
+            arcColors.forEachIndexed { i, color ->
+                brush.color = color
+                canvas.drawArc(bounds, -88f + i * 90f, 82f, false, brush)
+            }
+            if (day > 0) {
+                val fraction = ((day - 1).toFloat() / length.coerceAtLeast(1)).coerceIn(0f, 1f)
+                val angle = Math.toRadians((-90f + fraction * 360f).toDouble())
+                val x = cx + radius * kotlin.math.cos(angle).toFloat()
+                val y = cy + radius * kotlin.math.sin(angle).toFloat()
+                brush.style = Paint.Style.FILL
+                brush.color = Color.WHITE
+                canvas.drawCircle(x, y, dp(9).toFloat(), brush)
+                brush.color = plum
+                canvas.drawCircle(x, y, dp(5).toFloat(), brush)
+            }
+            brush.style = Paint.Style.FILL
+            brush.color = plum
+            brush.textAlign = Paint.Align.CENTER
+            brush.typeface = Typeface.DEFAULT_BOLD
+            brush.textSize = dp(14).toFloat()
+            canvas.drawText(if (day > 0) "DÍA" else "TU CICLO", cx, cy - dp(8), brush)
+            brush.textSize = dp(40).toFloat()
+            canvas.drawText(if (day > 0) day.toString() else "✿", cx, cy + dp(34), brush)
+        }
     }
 
     private fun cloudPage() {
@@ -506,14 +561,17 @@ class MainActivity : Activity() {
         cloudPage()
     }
 
-    private fun profile(first: Boolean) {
+    private fun profile(first: Boolean, draft: CycleSettings? = null) {
         base()
-        val s = store.settings()
+        val s = draft ?: store.settings()
+        if (first) add(body, label("Paso 1 de 2 · Tu ciclo"), 6)
         title(
             if (first) "Conozcamos tu ciclo" else "Tu perfil de ciclo",
             "Puedes cambiar estos datos cuando quieras.",
         )
-        var date = store.cycleStarts().lastOrNull()?.let(LocalDate::parse)
+        var date =
+            draft?.lastStart?.let(LocalDate::parse)
+                ?: store.cycleStarts().lastOrNull()?.let(LocalDate::parse)
         val dateButton = button(date?.let(::dateText) ?: "Seleccionar fecha", true) {}
         dateButton.setOnClickListener {
             pickDate(date ?: LocalDate.now()) {
@@ -541,13 +599,15 @@ class MainActivity : Activity() {
         add(body, period, 8)
         val goal = input("Ej. conocer mi ciclo", s.goal).withLimit(120)
         val preferences = input("Ej. temas de bienestar", s.preferences).withLimit(200)
-        add(body, label("Tu objetivo"), 16)
-        add(body, goal, 8)
-        add(body, label("Preferencias"), 16)
-        add(body, preferences, 8)
+        if (!first) {
+            add(body, label("Tu objetivo"), 16)
+            add(body, goal, 8)
+            add(body, label("Preferencias"), 16)
+            add(body, preferences, 8)
+        }
         add(
             body,
-            button("Guardar perfil") {
+            button(if (first) "Continuar a personalización" else "Guardar perfil") {
                 val cl = cycle.text.toString().toIntOrNull()
                 val pl = period.text.toString().toIntOrNull()
                 val chosenDate = date
@@ -556,9 +616,10 @@ class MainActivity : Activity() {
                     cl == null || cl !in 15..60 -> cycle.error = "Elige entre 15 y 60 días"
                     pl == null || pl !in 1..15 || pl > cl ->
                         period.error = "Elige entre 1 y 15 días"
-                    goal.text.toString().trim().isEmpty() -> goal.error = "Escribe tu objetivo"
+                    !first && goal.text.toString().trim().isEmpty() ->
+                        goal.error = "Escribe tu objetivo"
                     else -> {
-                        store.saveSettings(
+                        val updated =
                             CycleSettings(
                                 chosenDate.toString(),
                                 cl,
@@ -566,14 +627,59 @@ class MainActivity : Activity() {
                                 goal.text.toString().trim(),
                                 preferences.text.toString().trim(),
                             )
-                        )
-                        showPage(0)
+                        if (first) personalizeProfile(updated)
+                        else {
+                            store.saveSettings(updated)
+                            showPage(0)
+                        }
                     }
                 }
             },
             20,
         )
         if (!first) add(body, button("Volver", true) { showPage(0) }, 10)
+    }
+
+    private fun personalizeProfile(draft: CycleSettings) {
+        base()
+        add(body, label("Paso 2 de 2 · Personalización"), 6)
+        title(
+            "¿Qué quieres seguir?",
+            "Elige un objetivo para tu perfil. Puedes editarlo más adelante.",
+        )
+        val goal = input("Escribe o elige un objetivo", draft.goal).withLimit(120)
+        add(body, label("Tu objetivo"))
+        add(
+            body,
+            choices(
+                listOf("Conocer mi ciclo", "Registrar síntomas", "Observar mi bienestar"),
+                goal,
+            ),
+            8,
+        )
+        add(body, goal, 8)
+        val preferences = input("Ej. temas de bienestar", draft.preferences).withLimit(200)
+        add(body, label("Preferencias opcionales"), 16)
+        add(body, preferences, 8)
+        val values = {
+            draft.copy(
+                goal = goal.text.toString().trim(),
+                preferences = preferences.text.toString().trim(),
+            )
+        }
+        add(
+            body,
+            button("Guardar perfil") {
+                val updated = values()
+                if (updated.goal.isEmpty()) goal.error = "Escribe o elige un objetivo"
+                else {
+                    store.saveSettings(updated)
+                    showPage(0)
+                }
+            },
+            20,
+        )
+        add(body, button("Volver al ciclo", true) { profile(first = true, draft = values()) }, 10)
     }
 
     private fun pickDate(d: LocalDate, onDate: (LocalDate) -> Unit) {
@@ -592,9 +698,10 @@ class MainActivity : Activity() {
 
     private fun calendar() {
         title("Tu calendario", "Explora tus días y registra tu ciclo.")
+        val calendarCard = card()
         val controls = row()
         controls.addView(
-            button("‹", true) { changeMonth(-1) },
+            button("‹", true) { changeMonth(-1) }.apply { contentDescription = "Mes anterior" },
             LinearLayout.LayoutParams(dp(52), -2),
         )
         controls.addView(
@@ -610,19 +717,19 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f),
         )
         controls.addView(
-            button("›", true) { changeMonth(1) },
+            button("›", true) { changeMonth(1) }.apply { contentDescription = "Mes siguiente" },
             LinearLayout.LayoutParams(dp(52), -2),
         )
-        add(body, controls)
-        gap(body, 12)
+        add(calendarCard, controls)
+        gap(calendarCard, 12)
         val weekdays = row()
-        listOf("L", "M", "M", "J", "V", "S", "D").forEach {
+        listOf("L", "M", "X", "J", "V", "S", "D").forEach {
             weekdays.addView(
                 text(it, 13, plum, true).apply { gravity = Gravity.CENTER },
                 LinearLayout.LayoutParams(0, -2, 1f),
             )
         }
-        add(body, weekdays, 8)
+        add(calendarCard, weekdays, 8)
         val offset = month.atDay(1).dayOfWeek.value - 1
         val count = ((offset + month.lengthOfMonth() + 6) / 7) * 7
         val days =
@@ -632,6 +739,7 @@ class MainActivity : Activity() {
             }
         val starts = store.cycleStarts().toSet()
         val entries = store.entries().map { it.date }.toSet()
+        val today = LocalDate.now()
         val estimatedStart = store.estimate()?.nextStart?.let { parse(it) }
         val estimatedEnd = estimatedStart?.plusDays((store.settings().periodLength - 1).toLong())
         val grid =
@@ -640,10 +748,18 @@ class MainActivity : Activity() {
                 isNestedScrollingEnabled = false
                 adapter =
                     SimpleAdapter(days) { d ->
+                        val actual = d?.toString() in starts
+                        val recorded = d?.toString() in entries
+                        val estimated =
+                            d != null &&
+                                estimatedStart != null &&
+                                estimatedEnd != null &&
+                                d in estimatedStart..estimatedEnd &&
+                                d.isAfter(today)
                         text(
                                 if (d == null) ""
                                 else
-                                    "${d.dayOfMonth}${if(starts.contains(d.toString())) "\n●" else if(entries.contains(d.toString())) "\n·" else ""}",
+                                    "${d.dayOfMonth}\n${if(actual) "●" else if(recorded) "·" else "\u00A0"}",
                                 14,
                                 if (d == selectedDate) Color.WHITE else ink,
                                 d == selectedDate,
@@ -651,32 +767,47 @@ class MainActivity : Activity() {
                             .apply {
                                 gravity = Gravity.CENTER
                                 minHeight = dp(50)
-                                if (d == selectedDate) background = bg(plum, 14)
-                                else if (d != null && starts.contains(d.toString()))
-                                    background = bg(pink, 14)
-                                else if (
-                                    d != null &&
-                                        estimatedStart != null &&
-                                        estimatedEnd != null &&
-                                        !d.isBefore(estimatedStart) &&
-                                        !d.isAfter(estimatedEnd) &&
-                                        d.isAfter(LocalDate.now())
-                                )
-                                    background = bg(lavender, 14)
-                                if (d != null)
+                                when {
+                                    d == selectedDate -> background = bg(plum, 14)
+                                    actual -> background = bg(pink, 14)
+                                    estimated -> background = bg(lavender, 14)
+                                }
+                                if (d != null) {
+                                    contentDescription =
+                                        buildList {
+                                                add(dateText(d))
+                                                if (d == selectedDate) add("seleccionado")
+                                                if (actual) add("inicio real")
+                                                if (recorded) add("registro diario")
+                                                if (estimated) add("periodo estimado")
+                                            }
+                                            .joinToString(", ")
                                     setOnClickListener {
                                         selectedDate = d
                                         showPage(1)
                                     }
+                                }
                             }
                     }
             }
-        add(body, grid, 12)
-        add(
-            body,
-            text("● Inicio real   · Registro diario   ▪ Periodo futuro estimado", 12, plum),
-            6,
-        )
+        add(calendarCard, grid, 12)
+        val legend = row()
+        for ((name, color) in
+            listOf(
+                "Inicio real" to pink,
+                "Periodo estimado" to lavender,
+                "Registro diario" to ivory,
+            )) {
+            val item =
+                text(name, 11, plum, true).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(dp(4), dp(6), dp(4), dp(6))
+                    background = bg(color, 9)
+                }
+            legend.addView(item, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(4) })
+        }
+        add(calendarCard, legend, 8)
+        add(body, calendarCard)
         val detail = card()
         add(detail, text(dateText(selectedDate), 18, ink, true))
         add(
@@ -1163,6 +1294,20 @@ class MainActivity : Activity() {
             body,
             list(articles) { article ->
                 card(if (articles.indexOf(article) % 2 == 0) mint else lavender).apply {
+                    if (article.title.contains("infusiones", ignoreCase = true)) {
+                        val image =
+                            ImageView(this@MainActivity).apply {
+                                setImageResource(R.drawable.seluna_infusion)
+                                scaleType = ImageView.ScaleType.CENTER_CROP
+                                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                                background = bg(lavender, 14)
+                                clipToOutline = true
+                            }
+                        addView(
+                            image,
+                            LinearLayout.LayoutParams(-1, dp(145)).apply { bottomMargin = dp(14) },
+                        )
+                    }
                     add(this, text("✦  GUÍA DE BIENESTAR", 11, plum, true))
                     add(this, text(article.title, 18, ink, true), 8)
                     add(this, text(article.question, 14, plum), 6)
