@@ -2,6 +2,8 @@ package com.seluna.app
 
 import android.app.*
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -14,15 +16,18 @@ import android.text.InputFilter
 import android.text.InputType
 import android.text.SpannableStringBuilder
 import android.text.Spanned
+import android.text.method.PasswordTransformationMethod
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -42,6 +47,7 @@ class MainActivity : Activity() {
     private var selectedDate = LocalDate.now()
     private val messages = mutableListOf<Pair<String, String>>()
     private var chatDraft = ""
+    private var photoUserId: Long? = null
     private val ink = Color.rgb(56, 45, 54)
     private val plum = Color.rgb(116, 85, 99)
     private val pink = Color.rgb(247, 220, 229)
@@ -140,10 +146,17 @@ class MainActivity : Activity() {
         store = SelunaStore(this)
         cloud = SelunaCloud(this, store)
         guide = SelunaGuide(this)
-        if (store.currentUser() == null) {
-            cloud.signOut()
-            auth(false)
-        } else showPage(0)
+        photoUserId = savedInstanceState?.takeIf { it.containsKey("photo_user_id") }
+            ?.getLong("photo_user_id")
+        cloud.resumeAccount()
+        if (store.currentUser() == null) auth(false)
+        else if (!store.onboardingComplete()) profile(true)
+        else showPage(0)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        photoUserId?.let { outState.putLong("photo_user_id", it) }
     }
 
     private fun base(withNav: Boolean = false) {
@@ -152,6 +165,17 @@ class MainActivity : Activity() {
         val header = row().apply { setPadding(dp(24), dp(16), dp(24), dp(12)) }
         header.addView(text("✿  Seluna", 24, plum, true), LinearLayout.LayoutParams(0, -2, 1f))
         if (withNav) {
+            val avatar = ImageView(this).apply {
+                val bytes = store.profilePhoto()
+                if (bytes != null) setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
+                else setImageResource(android.R.drawable.ic_menu_myplaces)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                background = bg(pink, 22)
+                clipToOutline = true
+                contentDescription = "Abrir mi perfil"
+                setOnClickListener { profile(false) }
+            }
+            header.addView(avatar, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(8) })
             val chat = text("✧  Chat", 14, plum, true)
             chat.setPadding(dp(10), dp(8), dp(10), dp(8))
             chat.background = bg(pink, 14)
@@ -192,99 +216,134 @@ class MainActivity : Activity() {
 
     private fun auth(register: Boolean) {
         base()
-        val welcome =
-            card(pink).apply {
-                background =
-                    GradientDrawable(
-                            GradientDrawable.Orientation.TL_BR,
-                            intArrayOf(pink, ivory, mint),
-                        )
-                        .apply { cornerRadius = dp(24).toFloat() }
-                setPadding(dp(22), dp(24), dp(22), dp(22))
-            }
-        add(
-            welcome,
-            text(if (register) "Tu espacio, a tu ritmo" else "Qué bueno verte", 30, ink, true),
-        )
-        add(
-            welcome,
-            text(
-                if (register) "Crea tu cuenta y empieza a conocerte mejor."
-                else "Inicia sesión para continuar tu bienestar.",
-                16,
-                plum,
-            ),
-            8,
-        )
-        add(body, welcome, 10)
+        val hero = card(pink).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(pink, lavender, mint)).apply { cornerRadius = dp(28).toFloat() }
+            gravity = Gravity.CENTER
+        }
+        add(hero, text("✿", 27, plum, true).apply { gravity = Gravity.CENTER })
+        add(hero, text(if (register) "Crea tu cuenta" else "Bienvenida de nuevo", 25, ink, true)
+            .apply { gravity = Gravity.CENTER }, 7)
+        add(hero, text("Tu ciclo y tu bienestar, a tu ritmo.", 14, plum)
+            .apply { gravity = Gravity.CENTER }, 6)
+        add(body, hero, 10)
         val form = card()
-        val name = input("Tu nombre")
-        val email =
-            input(
-                "Correo electrónico",
-                type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
-            )
-        val pass =
-            input(
-                "Contraseña",
-                type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD,
-            )
+        val name = input("Tu nombre").withLimit(80)
+        val email = input("Correo electrónico", type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        val pass = input("Contraseña", type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        name.setAutofillHints(View.AUTOFILL_HINT_NAME)
+        email.setAutofillHints(View.AUTOFILL_HINT_EMAIL_ADDRESS)
+        pass.setAutofillHints(if (register) "newPassword" else View.AUTOFILL_HINT_PASSWORD)
         listOf(name, email, pass).forEach { it.background = bg(ivory, 14) }
         if (register) add(form, name)
-        add(form, email, if (register) 12 else 0)
-        add(form, pass, 12)
-        gap(form, 18)
-        add(
-            form,
-            button(if (register) "Crear cuenta" else "Iniciar sesión") {
-                val e = email.text.toString().trim()
-                val p = pass.text.toString()
-                val n = name.text.toString().trim()
-                when {
-                    register && n.isEmpty() -> name.error = "Escribe tu nombre"
-                    !android.util.Patterns.EMAIL_ADDRESS.matcher(e).matches() ->
-                        email.error = "Escribe un correo válido"
-                    p.length < 6 -> pass.error = "Usa al menos 6 caracteres"
-                    else -> {
-                        val ok =
-                            if (register) store.register(n, e, p)
-                            else {
-                                store.login(e, p) ||
-                                    (BuildConfig.DEBUG &&
-                                        e.equals(DemoSeeder.EMAIL, ignoreCase = true) &&
-                                        p == DemoSeeder.PASSWORD &&
-                                        DemoSeeder.signIn(store))
-                            }
-                        if (ok) {
-                            if (register) profile(true) else showPage(0)
-                        } else
-                            toast(
-                                if (register)
-                                    "No se pudo crear la cuenta. El correo podría estar registrado."
-                                else "Correo o contraseña incorrectos"
-                            )
+        add(form, email, if (register) 10 else 0)
+        add(form, pass, 10)
+        val passwordOptions = row()
+        passwordOptions.addView(CheckBox(this).apply {
+            text = "Mostrar"
+            contentDescription = "Mostrar contraseña"
+            setTextColor(plum)
+            setOnCheckedChangeListener { _, checked ->
+                pass.transformationMethod = if (checked) null else PasswordTransformationMethod.getInstance()
+                pass.setSelection(pass.length())
+            }
+        })
+        if (!register && cloud.available) {
+            val recovery = text("¿Olvidaste tu contraseña?", 13, plum, true).apply {
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                minHeight = dp(48)
+                setOnClickListener {
+                    val address = email.text.toString().trim()
+                    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(address).matches()) {
+                        email.error = "Escribe tu correo primero"
+                    } else cloud.resetPassword(address) { result ->
+                        toast(if (result.isSuccess) "Revisa tu correo para recuperar tu contraseña"
+                            else "No se pudo solicitar el correo. Inténtalo de nuevo.")
                     }
                 }
-            },
-        )
-        add(body, form, 16)
-        add(
-            body,
-            button(if (register) "Ya tengo una cuenta" else "Crear una cuenta", true) {
-                auth(!register)
-            },
-            12,
-        )
-        if (BuildConfig.DEBUG && store.currentUser() == null) {
-            add(
-                body,
-                button("Entrar con datos de muestra", true) {
-                    if (DemoSeeder.signIn(store)) showPage(0)
-                    else toast("No se pudo abrir la cuenta de muestra")
-                },
-                12,
-            )
+            }
+            passwordOptions.addView(recovery, LinearLayout.LayoutParams(0, -2, 1f))
         }
+        add(form, passwordOptions)
+        add(form, button(if (register) "Crear cuenta" else "Iniciar sesión") {
+            val e = email.text.toString().trim()
+            val p = pass.text.toString()
+            val n = name.text.toString().trim()
+            when {
+                register && n.isEmpty() -> name.error = "Escribe tu nombre"
+                !android.util.Patterns.EMAIL_ADDRESS.matcher(e).matches() -> email.error = "Escribe un correo válido"
+                p.length < 6 -> pass.error = "Usa al menos 6 caracteres"
+                !cloud.available && register -> {
+                    if (store.register(n, e, p)) enterAccount()
+                    else toast("Ese correo ya tiene un perfil en este dispositivo")
+                }
+                !cloud.available -> {
+                    if (store.login(e, p)) enterAccount()
+                    else toast("Correo o contraseña incorrectos")
+                }
+                cloudBusy -> Unit
+                else -> {
+                    cloudBusy = true
+                    setEnabledTree(root, false)
+                    cloud.signInAccount(if (register) n else null, e, p) { result ->
+                        cloudBusy = false
+                        if (isFinishing || isDestroyed) return@signInAccount
+                        setEnabledTree(root, true)
+                        if (result.isSuccess) {
+                            enterAccount()
+                        } else toast(when (result.exceptionOrNull()) {
+                            is com.google.firebase.FirebaseNetworkException -> "Revisa tu conexión e inténtalo de nuevo"
+                            is com.google.firebase.auth.FirebaseAuthUserCollisionException -> "Ese correo ya tiene una cuenta"
+                            is com.google.firebase.auth.FirebaseAuthWeakPasswordException -> "Elige una contraseña más segura"
+                            else -> "No se pudo acceder. Revisa el correo y la contraseña"
+                        })
+                    }
+                }
+            }
+        }.apply { background = bg(plum, 30) }, 6)
+        add(body, form, 20)
+        val privacy = card(mint)
+        add(privacy, text("✦  Tu privacidad importa", 15, ink, true))
+        add(privacy, text("Tu diario se guarda en este dispositivo. Al crear una copia, Firebase cifra los datos durante el envío y en sus servidores.", 14, plum), 6)
+        add(body, privacy, 14)
+        add(body, button(if (register) "Ya tengo una cuenta" else "Crear una cuenta", true) { auth(!register) }, 14)
+        if (!register) {
+            add(body, button("Acceder a un perfil local existente", true) { localAuth() }, 10)
+            if (BuildConfig.DEBUG) add(body, button("Probar con datos de ejemplo", true) {
+                val scenarios = DemoSeeder.scenarios
+                AlertDialog.Builder(this).setTitle("Datos de ejemplo")
+                    .setItems(scenarios.map { it.label }.toTypedArray()) { _, index ->
+                        if (DemoSeeder.signIn(store, scenarios[index])) enterAccount()
+                        else toast("No se pudo abrir la cuenta de muestra")
+                    }.setNegativeButton("Cancelar", null).show()
+            }, 10)
+        }
+    }
+
+    private fun enterAccount() {
+        currentFocus?.let {
+            getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(it.windowToken, 0)
+        }
+        if (store.onboardingComplete()) showPage(0) else profile(true)
+    }
+
+    private fun setEnabledTree(view: View, enabled: Boolean) {
+        view.isEnabled = enabled
+        if (view is ViewGroup) for (i in 0 until view.childCount) setEnabledTree(view.getChildAt(i), enabled)
+    }
+
+    private fun localAuth() {
+        base()
+        title("Acceso local", "Para perfiles creados anteriormente en este dispositivo.")
+        val email = input("Correo electrónico", type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        val pass = input("Contraseña", type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        add(body, email)
+        add(body, pass, 10)
+        add(body, button("Entrar al perfil local") {
+            if (store.login(email.text.toString().trim(), pass.text.toString())) {
+                enterAccount()
+            } else toast("Correo o contraseña incorrectos")
+        }, 16)
+        add(body, button("Volver", true) { auth(false) }, 10)
     }
 
     private fun showPage(i: Int) {
@@ -471,8 +530,14 @@ class MainActivity : Activity() {
             add(
                 body,
                 button("Cerrar sesión en Firebase", true) {
+                    val accountSession = store.currentUser()?.let { store.requiresFirebaseSession(it.id) } == true
                     cloud.signOut()
-                    cloudPage()
+                    if (accountSession) {
+                        store.logout()
+                        messages.clear()
+                        chatDraft = ""
+                        auth(false)
+                    } else cloudPage()
                 },
                 10,
             )
@@ -569,8 +634,37 @@ class MainActivity : Activity() {
             if (first) "Conozcamos tu ciclo" else "Tu perfil de ciclo",
             "Puedes cambiar estos datos cuando quieras.",
         )
+        if (!first) {
+            add(body, text(store.currentUser()?.name ?: "Mi perfil", 20, ink, true))
+            add(body, text(store.currentUser()?.email ?: "", 14, plum), 4)
+            gap(body, 12)
+            val photo = ImageView(this).apply {
+                val bytes = store.profilePhoto()
+                if (bytes != null) setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
+                else setImageResource(android.R.drawable.ic_menu_camera)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                background = bg(pink, 45)
+                clipToOutline = true
+                contentDescription = "Foto de perfil"
+            }
+            val photoRow = row().apply { gravity = Gravity.CENTER }
+            photoRow.addView(photo, LinearLayout.LayoutParams(dp(88), dp(88)))
+            add(body, photoRow)
+            add(body, button("Cambiar foto de perfil", true) {
+                photoUserId = store.currentUser()?.id
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "image/*"
+                }, PICK_PHOTO)
+            }, 10)
+            if (store.profilePhoto() != null) add(body, button("Quitar foto", true) {
+                store.saveProfilePhoto(null)
+                profile(false)
+            }, 8)
+            gap(body, 14)
+        }
         var date =
-            draft?.lastStart?.let(LocalDate::parse)
+            draft?.lastStart?.takeIf { it.isNotEmpty() }?.let(LocalDate::parse)
                 ?: store.cycleStarts().lastOrNull()?.let(LocalDate::parse)
         val dateButton = button(date?.let(::dateText) ?: "Seleccionar fecha", true) {}
         dateButton.setOnClickListener {
@@ -597,6 +691,14 @@ class MainActivity : Activity() {
         add(body, cycle, 8)
         add(body, label("Duración habitual de menstruación"), 16)
         add(body, period, 8)
+        val regularity = input("Selecciona o escribe", s.regularity).withLimit(80)
+        add(body, label("¿Cómo es tu ciclo?"), 16)
+        add(body, choices(listOf("Regular", "Irregular", "No lo sé"), regularity), 8)
+        add(body, regularity, 8)
+        val contraception = input("Opcional", s.contraception).withLimit(100)
+        add(body, label("Anticoncepción (opcional)"), 16)
+        add(body, choices(listOf("Ninguna", "Hormonal", "Otra", "Prefiero no decir"), contraception), 8)
+        add(body, contraception, 8)
         val goal = input("Ej. conocer mi ciclo", s.goal).withLimit(120)
         val preferences = input("Ej. temas de bienestar", s.preferences).withLimit(200)
         if (!first) {
@@ -612,20 +714,19 @@ class MainActivity : Activity() {
                 val pl = period.text.toString().toIntOrNull()
                 val chosenDate = date
                 when {
-                    chosenDate == null -> toast("Selecciona el último inicio")
-                    cl == null || cl !in 15..60 -> cycle.error = "Elige entre 15 y 60 días"
+                    cl == null || cl !in 15..90 -> cycle.error = "Elige entre 15 y 90 días"
                     pl == null || pl !in 1..15 || pl > cl ->
                         period.error = "Elige entre 1 y 15 días"
-                    !first && goal.text.toString().trim().isEmpty() ->
-                        goal.error = "Escribe tu objetivo"
                     else -> {
                         val updated =
                             CycleSettings(
-                                chosenDate.toString(),
+                                chosenDate?.toString() ?: "",
                                 cl,
                                 pl,
                                 goal.text.toString().trim(),
                                 preferences.text.toString().trim(),
+                                regularity.text.toString().trim(),
+                                contraception.text.toString().trim(),
                             )
                         if (first) personalizeProfile(updated)
                         else {
@@ -637,29 +738,51 @@ class MainActivity : Activity() {
             },
             20,
         )
-        if (!first) add(body, button("Volver", true) { showPage(0) }, 10)
+        if (first) add(body, button("Omitir por ahora", true) {
+            store.completeOnboarding(null)
+            showPage(0)
+        }, 10)
+        else add(body, button("Volver", true) { showPage(0) }, 10)
     }
 
     private fun personalizeProfile(draft: CycleSettings) {
         base()
         add(body, label("Paso 2 de 2 · Personalización"), 6)
         title(
-            "¿Qué quieres seguir?",
+            "¿En qué te gustaría que Seluna te acompañe?",
             "Elige un objetivo para tu perfil. Puedes editarlo más adelante.",
         )
         val goal = input("Escribe o elige un objetivo", draft.goal).withLimit(120)
-        add(body, label("Tu objetivo"))
-        add(
-            body,
-            choices(
-                listOf("Conocer mi ciclo", "Registrar síntomas", "Observar mi bienestar"),
-                goal,
-            ),
-            8,
-        )
-        add(body, goal, 8)
+        val options = RadioGroup(this)
+        listOf(
+            "Conocer mi ciclo",
+            "Registrar síntomas",
+            "Observar mi bienestar",
+        ).forEach { option ->
+            val choice = RadioButton(this).apply {
+                id = View.generateViewId()
+                text = option
+                textSize = 16f
+                setTextColor(ink)
+                buttonTintList = android.content.res.ColorStateList.valueOf(plum)
+                background = bg(Color.WHITE, 20)
+                minHeight = dp(56)
+                setPadding(dp(12), 0, dp(12), 0)
+            }
+            options.addView(choice, RadioGroup.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(8)
+            })
+            if (option == draft.goal) options.check(choice.id)
+        }
+        options.setOnCheckedChangeListener { group, id ->
+            val selected = group.findViewById<RadioButton>(id)
+            if (selected != null) goal.setText(selected.text)
+        }
+        add(body, options)
+        add(body, goal)
         val preferences = input("Ej. temas de bienestar", draft.preferences).withLimit(200)
         add(body, label("Preferencias opcionales"), 16)
+        add(body, choices(listOf("Síntomas", "Ánimo", "Bienestar"), preferences, append = true), 8)
         add(body, preferences, 8)
         val values = {
             draft.copy(
@@ -673,7 +796,7 @@ class MainActivity : Activity() {
                 val updated = values()
                 if (updated.goal.isEmpty()) goal.error = "Escribe o elige un objetivo"
                 else {
-                    store.saveSettings(updated)
+                    store.completeOnboarding(updated)
                     showPage(0)
                 }
             },
@@ -1132,6 +1255,31 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICK_PHOTO) {
+            val userId = photoUserId
+            photoUserId = null
+            if (resultCode == RESULT_OK && data?.data != null && userId != null && store.currentUser()?.id == userId) {
+                try {
+                    val uri = data.data!!
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+                    require(bounds.outWidth > 0 && bounds.outHeight > 0)
+                    var sample = 1
+                    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 512) sample *= 2
+                    val bitmap = contentResolver.openInputStream(uri)?.use {
+                        BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+                    } ?: error("Imagen inválida")
+                    val bytes = ByteArrayOutputStream().use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+                        out.toByteArray()
+                    }
+                    require(bytes.size <= 512 * 1024)
+                    store.saveProfilePhoto(bytes)
+                    profile(false)
+                } catch (_: Exception) { toast("No se pudo cargar la foto") }
+            }
+            return
+        }
         if (
             requestCode !in EXPORT_REPORT..EXPORT_REPORT_WITH_DIARY ||
                 resultCode != RESULT_OK ||
@@ -1396,18 +1544,19 @@ class MainActivity : Activity() {
     private fun chatLoading() {
         chat(waiting = true)
         val snapshot = messages.toList()
+        val sessionVersion = store.sessionVersion
         thread {
             try {
                 val response = ChatClient.reply(snapshot)
                 runOnUiThread {
-                    if (!isFinishing && !isDestroyed) {
+                    if (!isFinishing && !isDestroyed && store.sessionVersion == sessionVersion) {
                         messages.add("assistant" to response)
                         chat()
                     }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    if (!isFinishing && !isDestroyed) {
+                    if (!isFinishing && !isDestroyed && store.sessionVersion == sessionVersion) {
                         chatDraft = messages.removeAt(messages.lastIndex).second
                         toast(e.message ?: "No fue posible conectar. Inténtalo de nuevo.")
                         chat()
@@ -1483,6 +1632,7 @@ class MainActivity : Activity() {
     }
 
     private companion object {
+        const val PICK_PHOTO = 1000
         const val EXPORT_REPORT = 1001
         const val EXPORT_REPORT_WITH_DIARY = 1002
     }

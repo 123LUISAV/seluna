@@ -3,6 +3,7 @@ package com.seluna.app
 import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
@@ -47,6 +48,72 @@ class SelunaCloud(context: Context, private val store: SelunaStore) {
             val user = auth?.currentUser ?: return null
             return if (store.cloudLinked(local.id, user.uid)) user.email else null
         }
+
+    fun resumeAccount(): Boolean {
+        val local = store.currentUser() ?: return false
+        if (!store.requiresFirebaseSession(local.id)) return true
+        val user = auth?.currentUser
+        if (user != null && store.cloudLinked(local.id, user.uid)) return true
+        store.logout()
+        return false
+    }
+
+    fun resetPassword(email: String, onResult: (Result<Unit>) -> Unit) {
+        val service = auth ?: return onResult(Result.failure(IllegalStateException("Firebase no está disponible")))
+        service.sendPasswordResetEmail(email.trim()).addOnCompleteListener { task ->
+            if (task.isSuccessful) onResult(Result.success(Unit))
+            else onResult(Result.failure(task.exception ?: IllegalStateException("No se pudo enviar el correo")))
+        }
+    }
+
+    fun signInAccount(
+        name: String?,
+        email: String,
+        password: String,
+        onResult: (Result<Unit>) -> Unit,
+    ) {
+        val service = auth ?: return onResult(Result.failure(IllegalStateException("Firebase no está disponible")))
+        val token = synchronized(SelunaCloud::class.java) {
+            if (authPending) null
+            else {
+                authPending = true
+                ++generation
+            }
+        }
+        if (token == null)
+            return onResult(Result.failure(IllegalStateException("Ya hay un inicio de sesión en curso")))
+        val sessionVersion = store.sessionVersion
+        val cleanEmail = email.trim()
+        try {
+            val task = if (name == null) service.signInWithEmailAndPassword(cleanEmail, password)
+                else service.createUserWithEmailAndPassword(cleanEmail, password)
+            task.addOnCompleteListener { result ->
+                val outcome = synchronized(SelunaCloud::class.java) {
+                    val user = if (result.isSuccessful) result.result.user else null
+                    val opened = runCatching {
+                        check(token == generation && sessionVersion == store.sessionVersion) {
+                            "La sesión cambió"
+                        }
+                        if (!result.isSuccessful)
+                            throw (result.exception ?: IllegalStateException("No se pudo iniciar sesión"))
+                        check(user != null && user.uid == service.currentUser?.uid) { "Cuenta no disponible" }
+                        store.openFirebaseAccount(user.uid, user.email ?: cleanEmail, name ?: user.displayName)
+                        if (name != null)
+                            user.updateProfile(UserProfileChangeRequest.Builder().setDisplayName(name.trim()).build())
+                        Unit
+                    }
+                    if (opened.isFailure && user != null && service.currentUser?.uid == user.uid)
+                        service.signOut()
+                    authPending = false
+                    opened
+                }
+                onResult(outcome)
+            }
+        } catch (e: Exception) {
+            synchronized(SelunaCloud::class.java) { authPending = false }
+            onResult(Result.failure(e))
+        }
+    }
 
     fun authenticate(
         email: String,
@@ -189,6 +256,8 @@ class SelunaCloud(context: Context, private val store: SelunaStore) {
                         "periodLength" to config.periodLength,
                         "goal" to config.goal,
                         "preferences" to config.preferences,
+                        "regularity" to config.regularity,
+                        "contraception" to config.contraception,
                     )
             require(
                 JSONObject(data as Map<*, *>).toString().toByteArray(Charsets.UTF_8).size <= 800_000
@@ -265,6 +334,8 @@ class SelunaCloud(context: Context, private val store: SelunaStore) {
                                     period,
                                     string(m, "goal", 120),
                                     string(m, "preferences", 300),
+                                    if (m.containsKey("regularity")) string(m, "regularity", 100) else "",
+                                    if (m.containsKey("contraception")) string(m, "contraception", 100) else "",
                                 )
                             }
                         require(data["settings"] == null || settings != null)

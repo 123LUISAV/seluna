@@ -21,6 +21,8 @@ data class CycleSettings(
     val periodLength: Int = 5,
     val goal: String = "",
     val preferences: String = "",
+    val regularity: String = "",
+    val contraception: String = "",
 )
 
 data class DailyEntry(
@@ -38,7 +40,7 @@ data class CycleEstimate(
 )
 
 class SelunaStore(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "seluna.db", null, 2) {
+    SQLiteOpenHelper(context.applicationContext, "seluna.db", null, 3) {
     internal var sessionVersion: Long = 0
         private set
 
@@ -59,6 +61,7 @@ class SelunaStore(context: Context) :
             "CREATE TABLE cycle_starts (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, date TEXT NOT NULL, PRIMARY KEY(user_id, date))"
         )
         createCloudLinks(db)
+        addProfileFields(db)
     }
 
     private fun createCloudLinks(db: SQLiteDatabase) {
@@ -74,6 +77,16 @@ class SelunaStore(context: Context) :
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) createCloudLinks(db)
+        if (oldVersion < 3) addProfileFields(db)
+    }
+
+    private fun addProfileFields(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE users ADD COLUMN firebase_email TEXT")
+        db.execSQL("ALTER TABLE users ADD COLUMN photo BLOB")
+        db.execSQL("ALTER TABLE users ADD COLUMN onboarding_complete INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE settings ADD COLUMN regularity TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE settings ADD COLUMN contraception TEXT NOT NULL DEFAULT ''")
+        db.execSQL("UPDATE users SET onboarding_complete = 1 WHERE id IN (SELECT user_id FROM settings)")
     }
 
     private fun hash(password: String, salt: ByteArray): ByteArray {
@@ -132,7 +145,7 @@ class SelunaStore(context: Context) :
     fun login(email: String, password: String): Boolean {
         readableDatabase
             .rawQuery(
-                "SELECT id, salt, password_hash FROM users WHERE email = ?",
+                "SELECT id, salt, password_hash FROM users WHERE email = ? AND firebase_email IS NULL",
                 arrayOf(emailKey(email)),
             )
             .use { c ->
@@ -159,7 +172,10 @@ class SelunaStore(context: Context) :
         val id = session.getLong("user_id", -1)
         if (id < 0) return null
         readableDatabase
-            .rawQuery("SELECT id, name, email FROM users WHERE id = ?", arrayOf(id.toString()))
+            .rawQuery(
+                "SELECT id, name, COALESCE(firebase_email, email) FROM users WHERE id = ?",
+                arrayOf(id.toString()),
+            )
             .use { c ->
                 return if (c.moveToFirst())
                     UserProfile(c.getLong(0), c.getString(1), c.getString(2))
@@ -167,11 +183,82 @@ class SelunaStore(context: Context) :
             }
     }
 
+    internal fun requiresFirebaseSession(userId: Long): Boolean =
+        readableDatabase.rawQuery(
+            "SELECT 1 FROM users WHERE id = ? AND firebase_email IS NOT NULL",
+            arrayOf(userId.toString()),
+        ).use { it.moveToFirst() }
+
+    internal fun openFirebaseAccount(firebaseUid: String, email: String, name: String?) {
+        val db = writableDatabase
+        var id: Long
+        db.beginTransaction()
+        try {
+            id = db.rawQuery(
+                "SELECT user_id FROM cloud_links WHERE firebase_uid = ?", arrayOf(firebaseUid),
+            ).use { if (it.moveToFirst()) it.getLong(0) else -1L }
+            if (id < 0) {
+                val account = ContentValues().apply {
+                    put("email", "firebase:$firebaseUid")
+                    put("firebase_email", emailKey(email))
+                    put("name", name?.trim()?.take(80)?.ifBlank { null } ?: "Cuenta Seluna")
+                    put("salt", "")
+                    put("password_hash", "")
+                }
+                id = db.insertOrThrow("users", null, account)
+                db.insertOrThrow("cloud_links", null, ContentValues().apply {
+                    put("user_id", id)
+                    put("firebase_uid", firebaseUid)
+                })
+            } else if (requiresFirebaseSession(id)) {
+                val details = ContentValues().apply {
+                    put("firebase_email", emailKey(email))
+                    name?.trim()?.take(80)?.takeIf { it.isNotBlank() }?.let { put("name", it) }
+                }
+                db.update("users", details, "id = ?", arrayOf(id.toString()))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        session.edit().putLong("user_id", id).apply()
+        sessionVersion++
+    }
+
+    fun profilePhoto(): ByteArray? =
+        readableDatabase.rawQuery("SELECT photo FROM users WHERE id = ?", arrayOf(uid().toString()))
+            .use { if (it.moveToFirst() && !it.isNull(0)) it.getBlob(0) else null }
+
+    fun saveProfilePhoto(photo: ByteArray?) {
+        require(photo == null || photo.size in 1..(512 * 1024)) { "Foto demasiado grande" }
+        val values = ContentValues().apply { put("photo", photo) }
+        check(writableDatabase.update("users", values, "id = ?", arrayOf(uid().toString())) == 1)
+    }
+
+    fun onboardingComplete(): Boolean =
+        readableDatabase.rawQuery(
+            "SELECT onboarding_complete FROM users WHERE id = ?", arrayOf(uid().toString()),
+        ).use { it.moveToFirst() && it.getInt(0) == 1 }
+
+    fun completeOnboarding(settings: CycleSettings?) {
+        val id = uid()
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            if (settings != null) saveSettings(settings)
+            val complete = ContentValues().apply { put("onboarding_complete", 1) }
+            check(db.update("users", complete, "id = ?", arrayOf(id.toString())) == 1)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     fun settings(): CycleSettings {
         val id = uid()
         readableDatabase
             .rawQuery(
-                "SELECT last_start, cycle_length, period_length, goal, preferences FROM settings WHERE user_id = ?",
+                "SELECT last_start, cycle_length, period_length, goal, preferences, regularity, contraception FROM settings WHERE user_id = ?",
                 arrayOf(id.toString()),
             )
             .use { c ->
@@ -182,6 +269,8 @@ class SelunaStore(context: Context) :
                         c.getInt(2),
                         c.getString(3),
                         c.getString(4),
+                        c.getString(5),
+                        c.getString(6),
                     )
                 else CycleSettings()
             }
@@ -203,6 +292,8 @@ class SelunaStore(context: Context) :
                 put("period_length", settings.periodLength)
                 put("goal", settings.goal)
                 put("preferences", settings.preferences)
+                put("regularity", settings.regularity)
+                put("contraception", settings.contraception)
             }
         val db = writableDatabase
         db.beginTransaction()
