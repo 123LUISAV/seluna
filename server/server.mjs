@@ -53,6 +53,33 @@ async function readMessages(request) {
   return messages.map(({ role, content }) => ({ role, content }));
 }
 
+async function readChatReply(body) {
+  let pending = '';
+  let reply = '';
+  let finished = false;
+  for await (const chunk of body.pipeThrough(new TextDecoderStream())) {
+    const events = (pending + chunk).split(/\r?\n\r?\n/);
+    pending = events.pop();
+    for (const event of events) {
+      const data = event.split(/\r?\n/)
+        .filter(line => line.startsWith('data:'))
+        .map(line => line.slice(5).trimStart())
+        .join('\n');
+      if (!data) continue;
+      if (data === '[DONE]') return reply;
+
+      const frame = JSON.parse(data);
+      if (frame.error) throw new Error('B.AI interrumpió la generación.');
+      const choice = frame.choices?.[0];
+      const content = choice?.delta?.content;
+      if (typeof content === 'string') reply += content;
+      if (choice?.finish_reason) finished = true;
+    }
+  }
+  if (!finished) throw new Error('B.AI cerró la respuesta antes de completarla.');
+  return reply;
+}
+
 let busy = false;
 const server = createServer(async (request, response) => {
   if (request.method === 'GET' && request.url === '/health') {
@@ -77,9 +104,15 @@ const server = createServer(async (request, response) => {
   try {
     const upstream = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: instruction }, ...messages], stream: false, max_tokens: 1_400 }),
-      signal: AbortSignal.timeout(28_000),
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'system', content: instruction }, ...messages],
+        stream: true,
+        enable_thinking: false,
+        max_tokens: 600,
+      }),
+      signal: AbortSignal.timeout(33_000),
       redirect: 'error',
     });
     if (!upstream.ok) {
@@ -87,9 +120,8 @@ const server = createServer(async (request, response) => {
       console.warn(`B.AI respondió HTTP ${upstream.status}.`);
       return send(response, upstream.status === 429 ? 429 : 502, { error: 'El proveedor no pudo responder.' });
     }
-    const result = await upstream.json();
-    const reply = result.choices?.[0]?.message?.content;
-    if (typeof reply !== 'string' || !reply.trim()) {
+    const reply = await readChatReply(upstream.body);
+    if (!reply.trim()) {
       return send(response, 502, { error: 'El proveedor devolvió una respuesta vacía.' });
     }
     send(response, 200, { reply: reply.trim() });
