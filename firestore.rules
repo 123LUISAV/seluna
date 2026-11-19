@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/backups/current {
+      function owner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+
+      allow get: if owner();
+      allow create, update: if owner()
+        && request.resource.data.keys().hasAll(['schemaVersion', 'cycleStarts', 'entries', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['schemaVersion', 'cycleStarts', 'entries', 'settings', 'updatedAt'])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.cycleStarts is list
+        && request.resource.data.entries is list
+        && (!('settings' in request.resource.data) || request.resource.data.settings is map)
+        && request.resource.data.updatedAt == request.time;
+    }
+  }
+}

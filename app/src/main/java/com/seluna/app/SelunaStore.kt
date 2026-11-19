@@ -38,7 +38,10 @@ data class CycleEstimate(
 )
 
 class SelunaStore(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "seluna.db", null, 1) {
+    SQLiteOpenHelper(context.applicationContext, "seluna.db", null, 2) {
+    internal var sessionVersion: Long = 0
+        private set
+
     private val session =
         context.applicationContext.getSharedPreferences("seluna_session", Context.MODE_PRIVATE)
 
@@ -55,6 +58,13 @@ class SelunaStore(context: Context) :
         db.execSQL(
             "CREATE TABLE cycle_starts (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, date TEXT NOT NULL, PRIMARY KEY(user_id, date))"
         )
+        createCloudLinks(db)
+    }
+
+    private fun createCloudLinks(db: SQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS cloud_links (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, firebase_uid TEXT NOT NULL UNIQUE)"
+        )
     }
 
     override fun onConfigure(db: SQLiteDatabase) {
@@ -62,7 +72,9 @@ class SelunaStore(context: Context) :
         db.setForeignKeyConstraintsEnabled(true)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) createCloudLinks(db)
+    }
 
     private fun hash(password: String, salt: ByteArray): ByteArray {
         val spec = PBEKeySpec(password.toCharArray(), salt, 120_000, 256)
@@ -113,6 +125,7 @@ class SelunaStore(context: Context) :
             )
         if (id < 0) return false
         session.edit().putLong("user_id", id).apply()
+        sessionVersion++
         return true
     }
 
@@ -132,11 +145,13 @@ class SelunaStore(context: Context) :
                 )
                     return false
                 session.edit().putLong("user_id", c.getLong(0)).apply()
+                sessionVersion++
                 return true
             }
     }
 
     fun logout() {
+        sessionVersion++
         session.edit().remove("user_id").apply()
     }
 
@@ -347,5 +362,90 @@ class SelunaStore(context: Context) :
             length,
             intervals.isNotEmpty(),
         )
+    }
+
+    internal fun hasCloudLink(userId: Long): Boolean =
+        readableDatabase
+            .rawQuery("SELECT 1 FROM cloud_links WHERE user_id = ?", arrayOf(userId.toString()))
+            .use { it.moveToFirst() }
+
+    internal fun cloudLinked(userId: Long, firebaseUid: String): Boolean =
+        readableDatabase
+            .rawQuery(
+                "SELECT 1 FROM cloud_links WHERE user_id = ? AND firebase_uid = ?",
+                arrayOf(userId.toString(), firebaseUid),
+            )
+            .use { it.moveToFirst() }
+
+    internal fun linkCloud(userId: Long, firebaseUid: String) {
+        check(currentUser()?.id == userId) { "La sesión local cambió" }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.rawQuery(
+                    "SELECT user_id, firebase_uid FROM cloud_links WHERE user_id = ? OR firebase_uid = ?",
+                    arrayOf(userId.toString(), firebaseUid),
+                )
+                .use { c ->
+                    while (c.moveToNext()) check(
+                        c.getLong(0) == userId && c.getString(1) == firebaseUid
+                    ) {
+                        "Esta cuenta ya está vinculada a otro perfil"
+                    }
+                }
+            val values =
+                ContentValues().apply {
+                    put("user_id", userId)
+                    put("firebase_uid", firebaseUid)
+                }
+            check(
+                db.insertWithOnConflict(
+                    "cloud_links",
+                    null,
+                    values,
+                    SQLiteDatabase.CONFLICT_IGNORE,
+                ) >= 0 || cloudLinked(userId, firebaseUid)
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    internal fun hasSettings(userId: Long): Boolean =
+        readableDatabase
+            .rawQuery("SELECT 1 FROM settings WHERE user_id = ?", arrayOf(userId.toString()))
+            .use { it.moveToFirst() }
+
+    internal fun mergeCloud(
+        userId: Long,
+        config: CycleSettings?,
+        starts: List<String>,
+        records: List<DailyEntry>,
+    ): Int {
+        check(currentUser()?.id == userId) { "La sesión local cambió" }
+        val db = writableDatabase
+        var count = 0
+        db.beginTransaction()
+        try {
+            if (config != null && !hasSettings(userId)) {
+                saveSettings(config)
+                count++
+            }
+            val existingStarts = cycleStarts().toSet()
+            for (date in starts.distinct()) if (date !in existingStarts) {
+                addCycleStart(date)
+                count++
+            }
+            for (record in records.distinctBy { it.date }) if (entry(record.date) == null) {
+                saveEntry(record)
+                count++
+            }
+            check(currentUser()?.id == userId) { "La sesión local cambió" }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return count
     }
 }

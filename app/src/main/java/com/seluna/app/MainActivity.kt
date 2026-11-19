@@ -29,6 +29,8 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
     private lateinit var store: SelunaStore
+    private lateinit var cloud: SelunaCloud
+    private var cloudBusy = false
     private lateinit var guide: SelunaGuide
     private lateinit var root: LinearLayout
     private lateinit var body: LinearLayout
@@ -133,8 +135,12 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = SelunaStore(this)
+        cloud = SelunaCloud(this, store)
         guide = SelunaGuide(this)
-        if (store.currentUser() == null) auth(false) else showPage(0)
+        if (store.currentUser() == null) {
+            cloud.signOut()
+            auth(false)
+        } else showPage(0)
     }
 
     private fun base(withNav: Boolean = false) {
@@ -314,6 +320,7 @@ class MainActivity : Activity() {
         add(body, c)
         add(body, button("Registrar síntomas y notas") { entryForm(LocalDate.now()) }, 18)
         add(body, button("Mi perfil y ciclo", true) { profile(false) }, 10)
+        if (cloud.available) add(body, button("Copia en Firebase", true) { cloudPage() }, 10)
         val note = card(mint)
         add(note, text("Un día a la vez", 18, ink, true))
         add(
@@ -330,6 +337,7 @@ class MainActivity : Activity() {
         add(
             body,
             button("Cerrar sesión", true) {
+                cloud.signOut()
                 store.logout()
                 messages.clear()
                 chatDraft = ""
@@ -337,6 +345,165 @@ class MainActivity : Activity() {
             },
             14,
         )
+    }
+
+    private fun cloudPage() {
+        base()
+        title("Copia en Firebase", "Guarda o recupera una copia de tu diario cuando lo decidas.")
+        if (cloudBusy) {
+            add(body, text("Conectando con Firebase…", 15, plum))
+            return
+        }
+
+        val email = cloud.accountEmail
+        val account = card()
+        add(
+            account,
+            text(if (email == null) "Cuenta de Firebase" else "Cuenta conectada", 18, ink, true),
+        )
+        add(
+            account,
+            text(email ?: "Usa correo y contraseña para conectar este perfil local.", 15, plum),
+            8,
+        )
+        add(body, account)
+
+        if (email == null) {
+            add(body, button("Iniciar sesión en Firebase") { cloudAuth(create = false) }, 16)
+            add(body, button("Crear cuenta en Firebase", true) { cloudAuth(create = true) }, 10)
+        } else {
+            add(
+                body,
+                button("Guardar copia en Firebase") {
+                    AlertDialog.Builder(this)
+                        .setTitle("Guardar copia")
+                        .setMessage(
+                            "Se enviarán tu configuración de ciclo, inicios y diario, incluidas las notas, a la cuenta de Firebase conectada. Los datos reemplazarán la última copia de esta cuenta."
+                        )
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Guardar") { _, _ ->
+                            startCloudOperation()
+                            cloud.backup {
+                                finishCloudOperation(it) { "Copia guardada en Firebase" }
+                            }
+                        }
+                        .show()
+                },
+                16,
+            )
+            add(
+                body,
+                button("Restaurar copia", true) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Restaurar copia")
+                        .setMessage(
+                            "Se añadirán los inicios y registros que falten en este dispositivo. Se conservarán tus datos y cambios locales."
+                        )
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Restaurar") { _, _ ->
+                            startCloudOperation()
+                            cloud.restore {
+                                finishCloudOperation(it) { count ->
+                                    if (count == 0) "Tu perfil ya contiene esos datos"
+                                    else "Datos recuperados: $count"
+                                }
+                            }
+                        }
+                        .show()
+                },
+                10,
+            )
+            add(
+                body,
+                button("Cerrar sesión en Firebase", true) {
+                    cloud.signOut()
+                    cloudPage()
+                },
+                10,
+            )
+        }
+        add(
+            body,
+            text(
+                "Tu diario funciona en SQLite y la copia se guarda al confirmar el envío.",
+                14,
+                plum,
+            ),
+            16,
+        )
+        add(body, button("Volver a Hoy", true) { showPage(0) }, 14)
+    }
+
+    private fun cloudAuth(create: Boolean) {
+        val fields = column().apply { setPadding(dp(20), dp(6), dp(20), 0) }
+        val email =
+            input(
+                "Correo electrónico",
+                type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+            )
+        val password =
+            input(
+                "Contraseña",
+                type = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD,
+            )
+        add(fields, email)
+        add(fields, password, 8)
+        val dialog =
+            AlertDialog.Builder(this)
+                .setTitle(if (create) "Crear cuenta en Firebase" else "Iniciar sesión en Firebase")
+                .setView(fields)
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton(if (create) "Crear cuenta" else "Iniciar sesión", null)
+                .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val address = email.text.toString().trim()
+            val secret = password.text.toString()
+            when {
+                !android.util.Patterns.EMAIL_ADDRESS.matcher(address).matches() ->
+                    email.error = "Escribe un correo válido"
+                secret.length < 6 -> password.error = "Usa al menos 6 caracteres"
+                else -> {
+                    dialog.dismiss()
+                    startCloudOperation()
+                    cloud.authenticate(address, secret, create) { result ->
+                        finishCloudOperation(result) { "Cuenta de Firebase conectada" }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startCloudOperation() {
+        cloudBusy = true
+        cloudPage()
+    }
+
+    private fun <T> finishCloudOperation(result: Result<T>, message: (T) -> String) {
+        cloudBusy = false
+        if (isFinishing || isDestroyed || store.currentUser() == null) return
+        val status =
+            result.fold(message) { error ->
+                when (error) {
+                    is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException ->
+                        "Firebase no aceptó el correo o la contraseña"
+                    is com.google.firebase.auth.FirebaseAuthUserCollisionException ->
+                        "Ese correo ya tiene cuenta en Firebase"
+                    is com.google.firebase.firestore.FirebaseFirestoreException ->
+                        when (error.code) {
+                            com.google.firebase.firestore.FirebaseFirestoreException.Code
+                                .PERMISSION_DENIED -> "Firebase denegó el acceso a la copia"
+                            com.google.firebase.firestore.FirebaseFirestoreException.Code
+                                .UNAVAILABLE ->
+                                "Firestore no está disponible. Comprueba la conexión"
+                            else -> "Firestore no pudo completar la operación"
+                        }
+                    is com.google.firebase.FirebaseNetworkException ->
+                        "Firebase necesita conexión para esta operación"
+                    else -> error.localizedMessage ?: "Firebase no pudo completar la operación"
+                }
+            }
+        toast(status)
+        cloudPage()
     }
 
     private fun profile(first: Boolean) {
