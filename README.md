@@ -1,0 +1,45 @@
+# Seluna
+
+Beta Android de Tecnologías Móviles, desarrollada por **Luisa Fernanda Velandia Salamanca**. Incluye seguimiento de ciclo, calendario, registro diario, estadísticas de síntomas, exportación de resumen PDF y un asistente educativo opcional.
+
+- [Plan y criterios de aceptación](docs/plan.md)
+- [Presentación con guion](docs/presentacion.html) · Abre el archivo en el navegador, usa `←` y `→` para avanzar o retroceder, `N` para mostrar el guion y `Esc` para cerrarlo.
+- [Mockups de Seluna en Figma](https://www.figma.com/design/NSu4CMDTwWvWka0ClNQGJ2/ProyectoMov?node-id=0-1&p=f)
+
+## Ejecutar en Android Studio
+
+Abre esta carpeta como proyecto, usa JDK 17 y Android SDK 35, selecciona la variante `debug` y ejecuta en un teléfono o emulador con Android 8.0 o superior. Desde PowerShell también puedes compilar y ejecutar el análisis estático.
+
+```powershell
+.\gradlew.bat :app:assembleDebug :app:lintDebug
+```
+
+El APK queda en `app/build/outputs/apk/debug/app-debug.apk`. El seguimiento y las cuentas locales funcionan en el dispositivo. Para la demostración del asistente, usa el emulador Android estándar. El APK de depuración apunta a `10.0.2.2:8787`, la dirección con la que el emulador llega al equipo anfitrión.
+
+## Probar el asistente
+
+Con Node.js 22 o superior, inicia el servidor de demostración desde la raíz del proyecto. Devuelve una respuesta identificada como demostración local.
+
+```powershell
+node server/server.mjs --demo
+```
+
+Para usar el modelo real, detén el servidor de demostración, copia `server/.env.example` a `server/.env` si el archivo todavía no existe y escribe tu clave en `BAI_API_KEY`. Luego verifica el acceso al modelo e inicia el servidor.
+
+```powershell
+node --env-file=server/.env server/server.mjs --check-model
+node --env-file=server/.env server/server.mjs
+```
+
+`server/.env` está excluido de Git. El servidor usa `https://api.b.ai/v1` y el identificador `qwen3.8-flash`. Al pulsar **Enviar**, viajan el mensaje y hasta ocho mensajes recientes de ese chat. El perfil y el diario se conservan en SQLite. El servidor de referencia escucha solo en el equipo anfitrión. Para conectar una compilación desde un teléfono físico, prepara un endpoint HTTPS con autenticación y límites de uso antes de darle acceso a la API. La compilación admite `-PselunaAssistantUrl=https://tu-servidor/chat`. [B.AI · Qwen3.8 Flash](https://docs.b.ai/llmservice/models/qwen3-8-flash/)
+
+## Recorrido para exponer
+
+1. En la app, crea una cuenta local ficticia y selecciona un inicio de menstruación reciente.
+2. Muestra el anillo de Hoy y la fecha estimada. Abre el calendario y selecciona un día.
+3. Guarda un registro con flujo, ánimo, síntomas e intensidad. Revisa los recuentos y la exportación PDF en Estadísticas.
+4. Abre el chat y pregunta «¿Cómo se cuenta el día 1 del ciclo?». Identifica el modo que estás usando.
+
+## Publicar desde una cuenta aislada
+
+Desde una terminal del proyecto, ejecuta `.\scripts\Publicar-Seluna.ps1`. El script solicita un token temporal de `123LUISAV` en un campo oculto, comprueba el usuario, verifica o crea `123LUISAV/seluna` como repositorio privado y confirma el commit de `main` después del push. El token solo se usa en el proceso y se quita al finalizar. Si el repositorio todavía no existe, la autorización de GitHub necesita permiso de creación además de escritura. Para un repositorio existente basta dar al token acceso de escritura al repositorio elegido. [GitHub CLI · Autenticación](https://docs.github.com/en/github-cli/github-cli/authenticating-with-github-cli)
