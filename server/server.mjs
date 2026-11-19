@@ -1,8 +1,12 @@
 import { createServer } from 'node:http';
+import { existsSync, readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 
-const apiKey = process.env.BAI_API_KEY?.trim();
 const demo = process.argv.includes('--demo');
-const port = Number(process.env.PORT || 8787);
+const envFile = new URL('.env', import.meta.url);
+const config = existsSync(envFile) ? parseEnv(readFileSync(envFile, 'utf8')) : {};
+const apiKey = demo ? undefined : config.BAI_API_KEY?.trim();
+const port = Number(config.PORT || 8787);
 const baseUrl = 'https://api.b.ai/v1';
 const model = 'qwen3.8-flash';
 const instruction = `Eres Seluna, asistente educativo de salud menstrual. Habla en español claro y breve.
@@ -74,7 +78,7 @@ const server = createServer(async (request, response) => {
     const upstream = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: instruction }, ...messages], stream: false, max_tokens: 500 }),
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: instruction }, ...messages], stream: false, max_tokens: 1_400 }),
       signal: AbortSignal.timeout(28_000),
       redirect: 'error',
     });

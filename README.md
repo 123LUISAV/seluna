@@ -27,11 +27,11 @@ node server/server.mjs --demo
 Para usar el modelo real, detén el servidor de demostración, copia `server/.env.example` a `server/.env` si el archivo todavía no existe y escribe tu clave en `BAI_API_KEY`. Luego verifica el acceso al modelo e inicia el servidor.
 
 ```powershell
-node --env-file=server/.env server/server.mjs --check-model
-node --env-file=server/.env server/server.mjs
+node server/server.mjs --check-model
+node server/server.mjs
 ```
 
-`server/.env` está excluido de Git. El servidor usa `https://api.b.ai/v1` y el identificador `qwen3.8-flash`. Al pulsar **Enviar**, viajan el mensaje y hasta ocho mensajes recientes de ese chat. El perfil y el diario se conservan en SQLite. El servidor de referencia escucha solo en el equipo anfitrión. Para conectar una compilación desde un teléfono físico, prepara un endpoint HTTPS con autenticación y límites de uso antes de darle acceso a la API. La compilación admite `-PselunaAssistantUrl=https://tu-servidor/chat`. [B.AI · Qwen3.8 Flash](https://docs.b.ai/llmservice/models/qwen3-8-flash/)
+El servidor lee la clave exclusivamente de `server/.env`, excluido de Git, y usa `https://api.b.ai/v1` con el identificador `qwen3.8-flash`. Al pulsar **Enviar**, viajan el mensaje y hasta ocho mensajes recientes de ese chat. El perfil y el diario se conservan en SQLite. El servidor de referencia escucha solo en el equipo anfitrión. El chat en un teléfono físico requiere desplegar un servicio HTTPS con control de acceso, que queda fuera de esta beta. [B.AI · Qwen3.8 Flash](https://docs.b.ai/llmservice/models/qwen3-8-flash/)
 
 ## Recorrido para exponer
 
