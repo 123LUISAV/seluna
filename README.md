@@ -3,8 +3,16 @@
 Beta Android de Tecnologías Móviles, desarrollada por **Luisa Fernanda Velandia Salamanca**. Incluye seguimiento de ciclo, calendario, registro diario, estadísticas de síntomas, exportación de resumen PDF y un asistente educativo opcional.
 
 - [Plan y criterios de aceptación](docs/plan.md)
-- [Presentación con guion](docs/presentacion.html) · Abre el archivo en el navegador, usa `←` y `→` para avanzar o retroceder, `N` para mostrar el guion y `Esc` para cerrarlo.
+- [Presentación con guion](docs/presentacion.html) · Usa `←` y `→` para avanzar o retroceder. `N` abre el guion debajo de la diapositiva y `Esc` lo cierra.
 - [Mockups de Seluna en Figma](https://www.figma.com/design/NSu4CMDTwWvWka0ClNQGJ2/ProyectoMov?node-id=0-1&p=f)
+
+## Capturas de la beta
+
+Capturas del emulador Android con un perfil y registros ficticios. El chat muestra el modo de demostración.
+
+| Hoy | Calendario | Registro | Estadísticas | Asistente |
+| --- | --- | --- | --- | --- |
+| <img src="docs/capturas/hoy.png" alt="Día del ciclo y fecha estimada" width="180"> | <img src="docs/capturas/calendario.png" alt="Calendario con un inicio de menstruación registrado" width="180"> | <img src="docs/capturas/registro.png" alt="Diario con un registro de flujo, ánimo y síntomas" width="180"> | <img src="docs/capturas/estadisticas.png" alt="Duración estimada y recuentos derivados del diario" width="180"> | <img src="docs/capturas/chat.png" alt="Conversación educativa en modo demostración" width="180"> |
 
 ## Ejecutar en Android Studio
 

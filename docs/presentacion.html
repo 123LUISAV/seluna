@@ -38,7 +38,7 @@
       .deck {
         max-width: 1440px;
         margin: auto;
-        min-height: 100dvh;
+        height: 100dvh;
         background: var(--ivory);
         display: flex;
         flex-direction: column;
@@ -69,7 +69,9 @@
         display: none;
         flex: 1;
         padding: clamp(26px, 4vw, 58px) clamp(24px, 6vw, 86px);
-        align-content: center;
+        align-content: safe center;
+        min-height: 0;
+        overflow: auto;
       }
       .slide.active {
         display: grid;
@@ -262,29 +264,6 @@
         opacity: 0.4;
         cursor: default;
       }
-      .notes {
-        position: fixed;
-        inset: 0;
-        background: #382d36a8;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        z-index: 2;
-      }
-      .notes.open {
-        display: flex;
-      }
-      .note-box {
-        background: var(--ivory);
-        border-radius: 24px;
-        padding: 28px;
-        max-width: 720px;
-        width: 100%;
-        max-height: 85dvh;
-        overflow: auto;
-        box-shadow: 0 20px 70px #382d3640;
-      }
       .note-head {
         display: flex;
         justify-content: space-between;
@@ -293,14 +272,9 @@
       }
       .note-box h3 {
         font:
-          normal 30px Georgia,
+          normal 21px Georgia,
           serif;
         margin: 0;
-      }
-      .note-box p,
-      .note-box li {
-        font-size: 15px;
-        line-height: 1.6;
       }
       .note-box a {
         color: var(--plum);
@@ -321,9 +295,6 @@
         color: var(--plum);
       }
       @media (max-width: 700px) {
-        .deck {
-          min-height: 100dvh;
-        }
         .tag {
           display: none;
         }
@@ -388,6 +359,133 @@
       @media (prefers-reduced-motion: reduce) {
         * {
           transition: none !important;
+          animation: none !important;
+        }
+      }
+
+      .notes {
+        display: none;
+        padding: 0 clamp(24px, 5vw, 72px) 12px;
+        flex: none;
+        overflow: hidden;
+      }
+      .notes.open {
+        display: block;
+      }
+      .note-box {
+        max-height: 24dvh;
+        overflow: auto;
+        border-radius: 18px;
+        padding: 15px 20px;
+        background: #fff;
+        border: 1px solid #eadce1;
+        overscroll-behavior: contain;
+        animation: notes-enter 200ms ease-out;
+      }
+      @keyframes notes-enter {
+        from {
+          transform: translateY(36px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      .deck:has(.notes.open) .slide {
+        padding-block: clamp(10px, 2dvh, 26px);
+      }
+      .deck:has(.notes.open) h2 {
+        font-size: clamp(30px, 6dvh, 56px);
+        margin-block: 8px 12px;
+      }
+      .deck:has(.notes.open) .shot img {
+        height: min(36dvh, 340px);
+      }
+      .note-head {
+        position: sticky;
+        top: -15px;
+        background: #fff;
+        padding: 0 0 8px;
+      }
+      .note-box p,
+      .note-box li {
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      .note-box p {
+        margin: 8px 0;
+      }
+      .note-box ul {
+        margin: 8px 0;
+      }
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        align-items: start;
+      }
+      .shot {
+        margin: 0;
+        min-width: 0;
+        text-align: center;
+      }
+      .shot img {
+        display: block;
+        width: auto;
+        max-width: 100%;
+        height: min(48dvh, 430px);
+        margin: auto;
+        border-radius: 19px;
+        box-shadow: 0 8px 25px #74556325;
+        object-fit: contain;
+        background: white;
+      }
+      .shot figcaption {
+        font-weight: 700;
+        color: var(--plum);
+        margin-top: 8px;
+        font-size: 14px;
+      }
+      .shot p {
+        font-size: 13px;
+        margin-top: 4px;
+      }
+      .chat-shot img {
+        height: min(56dvh, 500px);
+      }
+      .chat-shot {
+        display: grid;
+        place-items: center;
+      }
+      @media (max-width: 700px) {
+        .gallery {
+          grid-template-columns: repeat(4, minmax(130px, 1fr));
+          overflow-x: auto;
+          padding-bottom: 8px;
+        }
+        .shot img {
+          height: min(38dvh, 330px);
+        }
+        .shot p {
+          font-size: 12px;
+        }
+        .chat-shot img {
+          height: min(35dvh, 320px);
+        }
+        .notes {
+          padding: 0 18px 8px;
+        }
+        .note-box {
+          max-height: 25dvh;
+          padding: 12px;
+        }
+        .note-head {
+          top: -12px;
+        }
+        .bottom {
+          position: static;
+          flex: none;
         }
       }
     </style>
@@ -456,26 +554,36 @@
         <div>
           <div class="eyebrow">El recorrido</div>
           <h2>Cuatro espacios, una historia.</h2>
-          <div class="cards">
-            <div class="card">
-              <b>☼ Hoy</b>
-              <p>
-                Día del ciclo, próxima fecha estimada y acceso rápido al
-                registro.
-              </p>
-            </div>
-            <div class="card">
-              <b>▦ Calendario</b>
-              <p>Elegir fecha y registrar o quitar un inicio real.</p>
-            </div>
-            <div class="card">
-              <b>◒ Estadísticas</b>
-              <p>Consultar recuentos y tendencias del propio historial.</p>
-            </div>
-            <div class="card">
-              <b>✎ Registro</b>
-              <p>Guardar, consultar, editar y eliminar el diario por fecha.</p>
-            </div>
+          <div class="gallery">
+            <figure class="shot">
+              <img src="capturas/hoy.png" alt="Pantalla Hoy de Seluna" />
+              <figcaption>☼ Hoy</figcaption>
+              <p>Día del ciclo y estimación.</p>
+            </figure>
+            <figure class="shot">
+              <img
+                src="capturas/calendario.png"
+                alt="Pantalla Calendario de Seluna"
+              />
+              <figcaption>▦ Calendario</figcaption>
+              <p>Fechas e inicios reales.</p>
+            </figure>
+            <figure class="shot">
+              <img
+                src="capturas/estadisticas.png"
+                alt="Pantalla Estadísticas de Seluna"
+              />
+              <figcaption>◒ Estadísticas</figcaption>
+              <p>Tendencias del historial.</p>
+            </figure>
+            <figure class="shot">
+              <img
+                src="capturas/registro.png"
+                alt="Pantalla Registro de Seluna"
+              />
+              <figcaption>✎ Registro</figcaption>
+              <p>Diario, edición y eliminación.</p>
+            </figure>
           </div>
         </div>
       </section>
@@ -551,36 +659,35 @@
           <div>
             <div class="eyebrow">Asistente opcional</div>
             <h2>Preguntar cuando ella decida.</h2>
-            <p class="lead">
+            <p>
               Al pulsar Enviar se comparte el mensaje y hasta ocho mensajes
               recientes. El diario permanece en el dispositivo.
             </p>
             <div class="pills">
               <span class="pill">Qwen3.8 Flash</span
-              ><span class="pill">qwen3.8-flash</span
-              ><span class="pill">B.AI</span>
+              ><span class="pill">qwen3.8-flash · B.AI</span>
             </div>
+            <div class="cards" style="margin-top: 18px">
+              <div class="card">
+                <b>Demostración</b>
+                <p>Respuesta de prueba sin credenciales.</p>
+              </div>
+              <div class="card">
+                <b>Servicio real</b>
+                <p>Requiere conexión y un servidor configurado con la clave.</p>
+              </div>
+            </div>
+            <p class="small" style="margin-top: 12px">
+              Información general sobre bienestar menstrual.
+            </p>
           </div>
-          <div class="cards">
-            <div class="card wide">
-              <b>Demostración</b>
-              <p>
-                El servidor puede probar el recorrido sin credenciales mediante
-                una respuesta de demostración.
-              </p>
-            </div>
-            <div class="card wide">
-              <b>Servicio real</b>
-              <p>
-                Requiere servidor configurado, clave de B.AI y conexión. La
-                clave permanece en el servidor.
-              </p>
-            </div>
-            <div class="card wide">
-              <b>Alcance</b>
-              <p>Información general sobre bienestar menstrual.</p>
-            </div>
-          </div>
+          <figure class="shot chat-shot">
+            <img
+              src="capturas/chat.png"
+              alt="Pantalla del asistente de Seluna"
+            />
+            <figcaption>Chat de Seluna</figcaption>
+          </figure>
         </div>
       </section>
       <section class="slide" aria-label="Diapositiva 7">
@@ -652,44 +759,43 @@
           </div>
         </div>
       </section>
+      <div class="notes" id="notes" role="region" aria-labelledby="noteTitle">
+        <div class="note-box">
+          <div class="note-head">
+            <h3 id="noteTitle">Notas de presentación</h3>
+            <button class="close" id="close">Cerrar · Esc</button>
+          </div>
+          <div id="noteContent"></div>
+        </div>
+      </div>
       <footer class="bottom">
         <span class="count" id="count">01 / 08</span>
         <div class="progress"><i id="bar"></i></div>
-        <button class="control alt" id="notesButton" aria-haspopup="dialog">
+        <button
+          class="control alt"
+          id="notesButton"
+          aria-controls="notes"
+          aria-expanded="false"
+        >
           Notas · N</button
         ><button class="control alt" id="prev">← Anterior</button
         ><button class="control" id="next">Siguiente →</button>
       </footer>
     </main>
-    <div
-      class="notes"
-      id="notes"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="noteTitle"
-    >
-      <div class="note-box">
-        <div class="note-head">
-          <h3 id="noteTitle">Notas de presentación</h3>
-          <button class="close" id="close">Cerrar · Esc</button>
-        </div>
-        <div id="noteContent"></div>
-      </div>
-    </div>
     <script>
       const notes = [
         `<p><b>Guion · 35–40 s.</b> Soy Luisa Fernanda Velandia Salamanca y presento Seluna, una beta Android para acompañar el registro del ciclo menstrual. Quise reunir información cotidiana en un espacio sencillo, donde cada persona pueda consultar su propio historial a su ritmo.</p>`,
         `<p><b>Guion · 40–45 s.</b> Identifiqué que cuando los inicios, síntomas y notas están repartidos en distintos lugares es difícil reconstruir un ciclo. Mi objetivo fue crear una aplicación que reúna esos datos. Lo hago con formularios, almacenamiento local y una estimación explicable, para ayudar a recordar fechas, observar patrones y preparar preguntas informadas.</p>`,
         `<p><b>Guion · 45–50 s.</b> Organicé la experiencia en cuatro secciones. Hoy muestra el día del ciclo y la próxima estimación. Calendario permite seleccionar una fecha y registrar un inicio real. En Registro se pueden guardar, editar y eliminar datos diarios. Estadísticas resume la información que ya se ha registrado.</p>`,
-        `<p><b>Guion · 45–50 s.</b> Para la estimación ordeno los inicios reales y calculo la distancia en días entre fechas consecutivas. Si tengo intervalos ficticios de 28 y 30 días, su promedio es 29; sumo 29 al último inicio. Con un solo inicio utilizo la duración habitual configurada. Es una aproximación, no un diagnóstico ni un método anticonceptivo.</p><p class="source">Referencia: <a href="https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle">Office on Women’s Health · Your menstrual cycle</a>.</p>`,
+        `<p><b>Guion · 45–50 s.</b> Para la estimación ordeno los inicios reales y calculo la distancia en días entre fechas consecutivas. Si tengo intervalos ficticios de 28 y 30 días, su promedio es 29. Sumo esos 29 días al último inicio. Con un solo inicio utilizo la duración habitual configurada. La fecha aproximada sirve para orientar el seguimiento del ciclo.</p><p class="source">Referencia · <a href="https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle">Office on Women’s Health · Your menstrual cycle</a></p>`,
         `<p><b>Guion · 45–50 s.</b> Desarrollé la interfaz nativa en Kotlin. Los modelos representan perfil, configuración del ciclo, registro y estimación. SQLite persiste los datos por perfil local. Usé RecyclerView para el calendario y los listados con acciones por elemento, y validé fechas y valores en los formularios antes de guardar.</p><p class="source">Referencias: <a href="https://developer.android.com/training/data-storage/sqlite">Android · SQLite</a> · <a href="https://developer.android.com/develop/ui/views/layout/recyclerview">Android · RecyclerView</a>.</p>`,
-        `<p><b>Guion · 45–50 s.</b> Añadí un asistente opcional para preguntas generales. Cuando la usuaria pulsa Enviar, comparte el mensaje y hasta ocho turnos recientes con B.AI. El diario permanece en el dispositivo. El modelo es Qwen3.8 Flash, identificado como qwen3.8-flash. Puedo mostrar el flujo en modo demostración. Para recibir respuestas reales necesito conexión, servidor configurado y clave.</p><p class="source"><a href="https://docs.b.ai/llmservice/models/qwen3-8-flash/">B.AI · Qwen3.8 Flash</a></p>`,
+        `<p><b>Guion · 45–50 s.</b> Añadí un asistente opcional para preguntas generales. Cuando la usuaria pulsa Enviar, comparte el mensaje y hasta ocho mensajes recientes con B.AI. El diario permanece en el dispositivo. El modelo es Qwen3.8 Flash, identificado como qwen3.8-flash. La captura muestra una respuesta de demostración. Para recibir respuestas reales necesito conexión, servidor configurado y clave.</p><p class="source"><a href="https://docs.b.ai/llmservice/models/qwen3-8-flash/">B.AI · Qwen3.8 Flash</a></p>`,
         `<p><b>Guion · 45–50 s.</b> Primero traduje los mockups y la rúbrica a recorridos. Luego construí la persistencia local y los formularios. Finalmente conecté el asistente y comprobé el flujo en el emulador. Como propuesta de negocio planteo mantener gratuitos el historial y las funciones básicas. Seluna Plus podría ampliar el número de consultas y ofrecer resúmenes a petición. Mediría el costo medio por consulta y la disposición a pagar antes de implementar cobros.</p>`,
         `<p><b>Guion · 40–60 s.</b> Para terminar voy a demostrar el recorrido con datos ficticios: configuro el perfil, registro un inicio, agrego un día al diario y reviso las estadísticas. Después mostraré el chat y explicaré si está en modo demostración o conectado al servicio real. Gracias por escucharme.</p><p><b>Preguntas para preparar</b></p><ul><li>¿Por qué elegí almacenamiento local y qué ocurre al cambiar de dispositivo?</li><li>¿Cómo se calcula la estimación con uno o varios inicios y qué limitaciones tiene?</li><li>¿Qué datos se envían al chat y dónde se mantiene la clave?</li><li>¿Dónde se usa RecyclerView y qué acción tiene cada elemento?</li><li>¿Qué validaciones impiden guardar datos inconsistentes?</li><li>¿Qué ofrece la beta y qué pertenece a la propuesta futura de negocio?</li></ul>`,
       ];
       let index = 0;
       const slides = [...document.querySelectorAll(".slide")],
-        modal = document.getElementById("notes"),
+        notesPanel = document.getElementById("notes"),
         noteContent = document.getElementById("noteContent"),
         prev = document.getElementById("prev"),
         next = document.getElementById("next"),
@@ -706,20 +812,23 @@
         prev.disabled = index === 0;
         next.disabled = index === slides.length - 1;
         noteContent.innerHTML = notes[index];
+        noteContent.parentElement.scrollTop = 0;
       }
       function move(d) {
         index = Math.max(0, Math.min(slides.length - 1, index + d));
         render();
       }
       function closeNotes() {
-        modal.classList.remove("open");
+        notesPanel.classList.remove("open");
+        notesButton.setAttribute("aria-expanded", "false");
         notesButton.focus();
       }
       function toggleNotes() {
-        if (modal.classList.contains("open")) closeNotes();
+        if (notesPanel.classList.contains("open")) closeNotes();
         else {
           render();
-          modal.classList.add("open");
+          notesPanel.classList.add("open");
+          notesButton.setAttribute("aria-expanded", "true");
           document.getElementById("close").focus();
         }
       }
@@ -727,11 +836,8 @@
       next.onclick = () => move(1);
       notesButton.onclick = toggleNotes;
       document.getElementById("close").onclick = closeNotes;
-      modal.onclick = (e) => {
-        if (e.target === modal) closeNotes();
-      };
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && modal.classList.contains("open")) {
+        if (e.key === "Escape" && notesPanel.classList.contains("open")) {
           closeNotes();
           return;
         }
@@ -740,15 +846,9 @@
           toggleNotes();
           return;
         }
-        if (!modal.classList.contains("open")) {
-          if (e.key === "ArrowRight") {
-            e.preventDefault();
-            move(1);
-          }
-          if (e.key === "ArrowLeft") {
-            e.preventDefault();
-            move(-1);
-          }
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          move(e.key === "ArrowRight" ? 1 : -1);
         }
       });
       render();
