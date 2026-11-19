@@ -4,6 +4,7 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/seluna_data_extraction"
         android:icon="@drawable/seluna_icon"
+        android:roundIcon="@drawable/seluna_icon"
         android:label="Seluna"
         android:theme="@style/Theme.Seluna"
         android:usesCleartextTraffic="false">
