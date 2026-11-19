@@ -18,15 +18,15 @@ Cuando las fechas, los síntomas y las notas quedan repartidos entre el calendar
 
 | Recorrido | Resultado esperado |
 | --- | --- |
-| Cuenta y perfil | Crear sesión local, indicar el último inicio y ajustar la duración habitual del ciclo y del sangrado. |
+| Cuenta y perfil | Entrar o registrarse por correo en Firebase. Configurar el ciclo y el objetivo en dos pasos opcionales y elegir o quitar la foto del perfil. |
 | Hoy | Consultar el día desde el último inicio real y ver la próxima fecha estimada cuando está disponible. |
 | Calendario | Cambiar el mes, seleccionar una fecha y registrar o quitar un inicio de menstruación. |
 | Registro | Guardar, consultar, editar y eliminar registros por fecha. |
 | Estadísticas | Consultar recuentos, abrir guías de bienestar y exportar un PDF con resumen o detalle diario. |
 | Asistente | Resolver preguntas de la guía sin conexión y enviar otras consultas a Qwen con contexto limitado. |
-| Copia en Firebase | Vincular una cuenta por correo y confirmar la copia del diario a Firestore. Restaurar incorpora los datos que falten en el perfil local. |
+| Copia en Firebase | Usar la cuenta iniciada y confirmar la copia del diario a Firestore. Los perfiles locales anteriores pueden vincular una cuenta. Restaurar incorpora los datos que falten en SQLite. |
 
-El diario y la cuenta principal funcionan en SQLite sin conexión. La copia manual de Firebase requiere una cuenta vinculada y acceso al proyecto desplegado. El chat en vivo requiere un servidor con clave y conexión a B.AI. Los accesos con Google y Apple, la sincronización automática y la suscripción son ampliaciones posteriores a esta beta.
+El acceso y la recuperación por correo usan Firebase Authentication. El diario funciona en SQLite después de iniciar sesión. La copia manual requiere Firebase y una cuenta vinculada. El chat en vivo requiere un servidor con clave y conexión a B.AI. El [diagrama de clases y datos](modelo-datos.md) muestra qué servicio y qué tabla conservan cada dato.
 
 ## Metodología
 
@@ -40,7 +40,7 @@ El diario y la cuenta principal funcionan en SQLite sin conexión. La copia manu
 | Criterio | Evidencia para mostrar |
 | --- | --- |
 | Problemática y valor agregado | Diario local, estimación explicable y una conversación educativa opcional en el mismo flujo. |
-| Persistencia | SQLite conserva preferencias, inicios y registros por perfil al cerrar la aplicación. |
+| Persistencia | SQLite conserva preferencias, foto, inicios y registros por perfil al cerrar la aplicación. Los perfiles ficticios cubren ciclo con historial, ciclos variables y primer uso. |
 | Modelos orientados a objetos | `UserProfile`, `CycleSettings`, `DailyEntry` y `CycleEstimate` encapsulan propiedades. `SelunaStore` gestiona las consultas y relaciones. |
 | Listados | El calendario y las listas de diario, estadísticas y chat usan `RecyclerView`, con acciones por elemento. |
 | Formularios | El perfil del ciclo y el diario validan los valores antes de persistirlos. |
@@ -50,6 +50,18 @@ El diario y la cuenta principal funcionan en SQLite sin conexión. La copia manu
 1. **Firebase verificado.** Las reglas de `firestore.rules` están activas en `seluna-app`. Desde Android se guardó una copia con seis registros ficticios y tres inicios, y se recuperó un registro eliminado del dispositivo. Se confirmó que Firestore rechaza la lectura anónima.
 2. **Diseño.** Comparar la beta actual con Figma en un teléfono pequeño y otro ancho. Priorizar la jerarquía de Hoy, la leyenda del calendario, la legibilidad de los formularios y las tarjetas de bienestar.
 3. **Exposición.** Ensayar con la cuenta de muestra. Mostrar una fecha real y una estimada, el registro, los dos modos del informe PDF, una respuesta de la guía local y la copia ficticia de Firestore.
+
+## Diferencias pendientes frente a Figma
+
+| Pantalla | Pendiente |
+| --- | --- |
+| Acceso y personalización | Google y Apple. El onboarding admite objetivo, regularidad y anticoncepción opcional. El formulario de condiciones ginecológicas y los recordatorios programados siguen pendientes. |
+| Hoy | Resumen de la semana y accesos visuales para ánimo, flujo e hidratación. |
+| Calendario | Unir visualmente los días de un periodo y añadir el resumen desplegable del próximo mes. |
+| Estadísticas | Filtro temporal, tarjetas de duración y variación y barras verticales. Ya funcionan las barras de recuento, la guía «Infusiones y bienestar» y el PDF. |
+| Registro | Selector visual de flujo y campo específico para medicación. |
+
+Los mockups incluyen fases, fertilidad y un porcentaje de confianza. El cálculo implementado estima el próximo inicio del periodo con el historial. Incorporar indicadores de fertilidad requeriría definir y validar un cálculo adicional.
 
 ## Estimación del próximo inicio
 

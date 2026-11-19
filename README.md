@@ -3,12 +3,19 @@
 Beta Android de Tecnologías Móviles, desarrollada por **Luisa Fernanda Velandia Salamanca**. Incluye seguimiento de ciclo, calendario, registro diario, estadísticas de síntomas, exportación de resumen PDF y un asistente educativo opcional.
 
 - [Plan y criterios de aceptación](docs/plan.md)
+- [Diagrama de clases y datos](docs/modelo-datos.md)
 - [Presentación con guion](docs/presentacion.html) · Usa `←` y `→` para avanzar o retroceder. `N` abre el guion debajo de la diapositiva y `Esc` lo cierra.
 - [Mockups de Seluna en Figma](https://www.figma.com/design/NSu4CMDTwWvWka0ClNQGJ2/ProyectoMov?node-id=0-1&p=f)
 
 ## Capturas de la beta
 
 Capturas del emulador Android con perfiles y registros ficticios. El chat muestra una respuesta de la guía sin conexión.
+
+| Acceso | Configuración del ciclo | Personalización | Perfil |
+| --- | --- | --- | --- |
+| <img src="docs/capturas/acceso.png" alt="Inicio de sesión" width="180"> | <img src="docs/capturas/objetivo.png" alt="Primer paso del onboarding con los datos del ciclo" width="180"> | <img src="docs/capturas/personalizacion.png" alt="Segundo paso del onboarding con el objetivo y preferencias" width="180"> | <img src="docs/capturas/perfil.png" alt="Perfil ficticio con foto editable" width="180"> |
+
+[Formulario para crear cuenta](docs/capturas/registro-cuenta.png)
 
 | Hoy | Calendario | Registro | Estadísticas | Asistente |
 | --- | --- | --- | --- | --- |
@@ -24,9 +31,15 @@ Abre esta carpeta como proyecto, usa JDK 17 y Android SDK 35, selecciona la vari
 .\gradlew.bat :app:assembleDebug :app:lintDebug
 ```
 
-El APK queda en `app/build/outputs/apk/debug/app-debug.apk`. El seguimiento y las cuentas locales funcionan en el dispositivo. Para la demostración del asistente, usa el emulador Android estándar. El APK de depuración apunta a `10.0.2.2:8787`, la dirección con la que el emulador llega al equipo anfitrión.
+El APK queda en `app/build/outputs/apk/debug/app-debug.apk`. El acceso principal usa Firebase Authentication. El diario sigue disponible en el dispositivo durante una sesión iniciada. Para la demostración del asistente, usa el emulador Android estándar. El APK de depuración apunta a `10.0.2.2:8787`, la dirección con la que el emulador llega al equipo anfitrión.
 
-En la APK de depuración, **Entrar con datos de muestra** crea el perfil local `demo@seluna.example` con contraseña `SelunaDemo26!`, tres inicios del ciclo y seis registros ficticios. También puedes iniciar sesión con esas credenciales. El seeder carga los ejemplos la primera vez y conserva las ediciones posteriores.
+En la APK de depuración, **Probar con datos de ejemplo** abre uno de estos perfiles locales. El seeder carga los ejemplos la primera vez y conserva las ediciones posteriores. Para entrar por **Acceder a un perfil local existente**, usa la contraseña `SelunaDemo26!` después de crear el perfil de ejemplo.
+
+| Perfil ficticio | Correo local | Datos iniciales |
+| --- | --- | --- |
+| Seguimiento de ciclo | `demo@seluna.example` | Tres inicios y seis registros ficticios. |
+| Ciclos variables y síntomas | `demo-sintomas@seluna.example` | Intervalos irregulares y seis registros ficticios. |
+| Primer uso sin historial | `demo-inicio@seluna.example` | Onboarding y diario vacío. |
 
 ## Registro de Firebase
 
@@ -41,9 +54,13 @@ Para preparar la integración con Firebase, registra una app Android en el proye
 
 Habilita **Authentication → Correo electrónico/contraseña** y usa **Cloud Firestore en modo producción**. Descarga `google-services.json` desde la configuración de la app Android y colócalo en `app/google-services.json`. Gradle aplica el complemento Google Services cuando encuentra ese archivo. Las reglas del repositorio permiten escribir la copia únicamente a su UID autenticado. [Configuración de Android](https://firebase.google.com/docs/android/setup) · [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Reglas de Firestore](https://firebase.google.com/docs/firestore/security/rules-conditions)
 
-En Android, accede a un perfil en SQLite y abre **Hoy → Copia en Firebase**. Crea o inicia sesión en una cuenta por correo. Aparecerá en **Authentication → Usuarios**. **Guardar copia en Firebase** envía el diario, las notas y los inicios vinculados a esa cuenta, tras confirmar. En la consola queda bajo **Firestore Database → Datos → `users/{uid}/backups/current`**. Restaurar añade los datos ausentes y conserva las ediciones de SQLite. El seguimiento diario funciona con la base local y la copia a la nube es manual.
+En Android, crea una cuenta por correo desde el acceso inicial. Aparecerá en **Authentication → Usuarios**. Configura el ciclo y el objetivo durante el onboarding. Puedes cambiar la foto en **Mi perfil y ciclo**. La foto y el diario se guardan en el almacenamiento privado de la app.
+
+En **Hoy → Copia en Firebase**, confirma **Guardar copia en Firebase** para enviar configuración, inicios y diario, incluidas las notas. El documento aparece en **Firestore Database → Datos → `users/{uid}/backups/current`**. Restaurar añade los datos ausentes y conserva las ediciones de SQLite. Los perfiles locales existentes pueden vincular una cuenta de Firebase desde esa pantalla.
 
 Las reglas están desplegadas en `seluna-app`. La prueba en Android guardó una copia con seis registros ficticios y tres inicios, recuperó un registro del diario y verificó que Firestore rechaza una lectura anónima.
+
+[Consola de Authentication](docs/capturas/firebase-auth.png) · [Copia en Firestore](docs/capturas/firebase-firestore.png) · [Reglas activas](docs/capturas/firebase-reglas.png)
 
 Para administrar Firebase, abre una terminal nueva con `pwsh -NoProfile -NoExit -File .\scripts\Firebase-Seluna.ps1`. El acceso por código usa `entrega/firebase-luisa-cli`, separado de las sesiones habituales. Usa siempre `--project seluna-app` y la ruta al `firebase.json` del proyecto al desplegar reglas. Al terminar, ejecuta `pwsh -NoProfile -File .\scripts\Firebase-Seluna.ps1 -Cerrar` desde la raíz del proyecto para retirar la sesión temporal. [Referencia de Firebase CLI](https://firebase.google.com/docs/cli)
 
@@ -66,7 +83,7 @@ El servidor lee la clave exclusivamente de `server/.env`, excluido de Git, y usa
 
 ## Recorrido para exponer
 
-1. Entra con el perfil de muestra o crea una cuenta local ficticia. El formulario nuevo separa las fechas y duraciones del ciclo de la elección de un objetivo.
+1. Abre el inicio de sesión. En **Probar con datos de ejemplo**, elige **Primer uso sin historial** para mostrar el onboarding con el objetivo separado del registro. Abre **Seguimiento de ciclo** para continuar la exposición con historial.
 2. Muestra el anillo de Hoy y la fecha estimada. Abre el calendario y selecciona un día.
 3. Guarda un registro con flujo, ánimo, síntomas e intensidad. En **Estadísticas → Exportar informe de salud en PDF**, selecciona el resumen o incluye la tabla diaria. El informe se genera en el dispositivo y excluye las notas personales.
 4. Abre el chat y selecciona «¿Cómo se cuenta el día 1 del ciclo?» para probar la guía local. Para mostrar el servidor, escribe una pregunta diferente, como «¿Cómo puedo preparar preguntas para mi próxima consulta sobre mi ciclo?».

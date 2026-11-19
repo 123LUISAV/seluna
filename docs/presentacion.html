@@ -446,10 +446,44 @@
         gap: 14px;
         align-items: start;
       }
+      .evidence {
+        display: grid;
+        grid-template-columns: 1fr 1.35fr;
+        grid-template-areas: "auth data" "rules data";
+        gap: clamp(12px, 2vw, 26px);
+        align-items: center;
+      }
+      .evidence-auth {
+        grid-area: auth;
+      }
+      .evidence-data {
+        grid-area: data;
+      }
+      .evidence-rules {
+        grid-area: rules;
+      }
+      .evidence .shot img,
+      .deck:has(.notes.open) .evidence .shot img {
+        height: auto;
+        max-height: 24dvh;
+        border-radius: 12px;
+        background: #202020;
+      }
+      .evidence .evidence-data img,
+      .deck:has(.notes.open) .evidence .evidence-data img {
+        max-height: 43dvh;
+      }
+      .deck:has(.notes.open) .evidence .shot:not(.evidence-data) img {
+        max-height: 17dvh;
+      }
       .shot {
         margin: 0;
         min-width: 0;
         text-align: center;
+      }
+      .shot a:focus-visible img {
+        outline: 3px solid var(--ink);
+        outline-offset: 3px;
       }
       .shot img {
         display: block;
@@ -490,6 +524,14 @@
         height: min(33dvh, 310px);
       }
       @media (max-width: 700px) {
+        .evidence {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-areas: "data data" "auth rules";
+          align-items: start;
+        }
+        .evidence .shot figcaption {
+          font-size: 12px;
+        }
         .gallery {
           grid-template-columns: repeat(4, minmax(130px, 1fr));
           overflow-x: auto;
@@ -586,13 +628,49 @@
       </section>
       <section class="slide" aria-label="Diapositiva 3">
         <div>
+          <div class="eyebrow">Primer uso</div>
+          <h2>Acceso y personalización</h2>
+          <div class="gallery">
+            <figure class="shot">
+              <a href="capturas/acceso.png" target="_blank" rel="noopener noreferrer">
+                <img src="capturas/acceso.png" alt="Ampliar la pantalla de inicio de sesión de Seluna" />
+              </a>
+              <figcaption>Inicio de sesión</figcaption>
+              <p>Correo y contraseña.</p>
+            </figure>
+            <figure class="shot">
+              <a href="capturas/objetivo.png" target="_blank" rel="noopener noreferrer">
+                <img src="capturas/objetivo.png" alt="Ampliar el primer paso de configuración del ciclo" />
+              </a>
+              <figcaption>Tu ciclo</figcaption>
+              <p>Fecha de inicio y duración.</p>
+            </figure>
+            <figure class="shot">
+              <a href="capturas/personalizacion.png" target="_blank" rel="noopener noreferrer">
+                <img src="capturas/personalizacion.png" alt="Ampliar el segundo paso con objetivo y preferencias" />
+              </a>
+              <figcaption>Personalización</figcaption>
+              <p>Objetivo y preferencias.</p>
+            </figure>
+            <figure class="shot">
+              <a href="capturas/perfil.png" target="_blank" rel="noopener noreferrer">
+                <img src="capturas/perfil.png" alt="Ampliar la edición del perfil con la opción de cambiar la foto" />
+              </a>
+              <figcaption>Edición del perfil</figcaption>
+              <p>Foto guardada en el dispositivo.</p>
+            </figure>
+          </div>
+        </div>
+      </section>
+      <section class="slide" aria-label="Diapositiva 4">
+        <div>
           <div class="eyebrow">El recorrido</div>
           <h2>Cuatro espacios, una historia.</h2>
           <div class="gallery">
             <figure class="shot">
               <img src="capturas/hoy.png" alt="Pantalla Hoy de Seluna" />
               <figcaption>☼ Hoy</figcaption>
-              <p>Anillo por fases y día del ciclo.</p>
+              <p>Día contado desde el último inicio registrado.</p>
             </figure>
             <figure class="shot">
               <img
@@ -621,7 +699,7 @@
           </div>
         </div>
       </section>
-      <section class="slide" aria-label="Diapositiva 4">
+      <section class="slide" aria-label="Diapositiva 5">
         <div class="grid">
           <div>
             <div class="eyebrow">Una estimación comprensible</div>
@@ -645,7 +723,7 @@
           </div>
         </div>
       </section>
-      <section class="slide" aria-label="Diapositiva 5">
+      <section class="slide" aria-label="Diapositiva 6">
         <div class="grid">
           <div>
             <div class="eyebrow">Implementación</div>
@@ -664,8 +742,8 @@
             <div class="step">
               <span>01</span>
               <div>
-                <b>Modelos</b>
-                <p>Perfil, configuración, registro diario y estimación.</p>
+                <b>Identidad e historial</b>
+                <p>Auth gestiona el acceso. El perfil y el diario se guardan en el dispositivo. <a href="modelo-datos.md" target="_blank" rel="noopener noreferrer">Diagrama de clases</a></p>
               </div>
             </div>
             <div class="step">
@@ -681,17 +759,43 @@
             <div class="step">
               <span>03</span>
               <div>
-                <b>Estado de la integración</b>
+                <b>Protección de los datos</b>
                 <p>
-                  Reglas activas en seluna-app. Copia y restauración verificadas
-                  desde Android con un perfil ficticio.
+                  Android aísla los archivos de la app. Firebase cifra la copia en tránsito y en reposo.
                 </p>
               </div>
             </div>
           </div>
         </div>
       </section>
-      <section class="slide" aria-label="Diapositiva 6">
+      <section class="slide" aria-label="Diapositiva 7">
+        <div>
+          <div class="eyebrow">Prueba en seluna-app</div>
+          <h2>Firebase en la prueba de copia</h2>
+          <div class="evidence">
+            <figure class="shot evidence-auth">
+              <a href="capturas/firebase-auth.png" target="_blank" rel="noopener noreferrer">
+                <img src="capturas/firebase-auth.png" alt="Abrir evidencia de dos cuentas ficticias en Firebase Authentication" />
+              </a>
+              <figcaption>Authentication · cuentas de prueba</figcaption>
+            </figure>
+            <figure class="shot evidence-data">
+              <a href="capturas/firebase-firestore.png" target="_blank" rel="noopener noreferrer">
+                <img src="capturas/firebase-firestore.png" alt="Abrir documento current de la subcolección backups con registros y configuración ficticios" />
+              </a>
+              <figcaption>Firestore · copia de un ciclo ficticio</figcaption>
+              <p>Las capturas se pueden ampliar con un clic.</p>
+            </figure>
+            <figure class="shot evidence-rules">
+              <a href="capturas/firebase-reglas.png" target="_blank" rel="noopener noreferrer">
+                <img src="capturas/firebase-reglas.png" alt="Abrir reglas que limitan lectura y escritura de la copia a su titular" />
+              </a>
+              <figcaption>Reglas · acceso por UID de la cuenta</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+      <section class="slide" aria-label="Diapositiva 8">
         <div class="grid">
           <div>
             <div class="eyebrow">Asistente opcional</div>
@@ -723,7 +827,7 @@
           </figure>
         </div>
       </section>
-      <section class="slide" aria-label="Diapositiva 7">
+      <section class="slide" aria-label="Diapositiva 9">
         <div class="grid">
           <div>
             <div class="eyebrow">Método y criterios de entrega</div>
@@ -745,7 +849,7 @@
           </figure>
         </div>
       </section>
-      <section class="slide" aria-label="Diapositiva 8">
+      <section class="slide" aria-label="Diapositiva 10">
         <div class="grid">
           <div>
             <div class="eyebrow">Cierre · demostración</div>
@@ -780,7 +884,7 @@
         </div>
       </div>
       <footer class="bottom">
-        <span class="count" id="count">01 / 08</span>
+        <span class="count" id="count">01 / 10</span>
         <div class="progress"><i id="bar"></i></div>
         <button
           class="control alt"
@@ -797,12 +901,14 @@
       const notes = [
         `<p><b>Guion · 35–40 s.</b> Soy Luisa Fernanda Velandia Salamanca y presento Seluna, una beta Android para acompañar el registro del ciclo menstrual. Quise reunir información cotidiana en un espacio sencillo, donde cada persona pueda consultar su propio historial a su ritmo.</p>`,
         `<p><b>Guion · 40–45 s.</b> Identifiqué que cuando los inicios, síntomas y notas están repartidos en distintos lugares es difícil reconstruir un ciclo. Mi objetivo fue crear una aplicación que reúna esos datos. Lo hago con formularios, almacenamiento local y una estimación explicable, para ayudar a recordar fechas, observar patrones y preparar preguntas informadas.</p>`,
-        `<p><b>Guion · 45–55 s.</b> Después de crear un perfil, primero configuro el ciclo y luego elijo un objetivo y, si quiero, algunas preferencias. En Hoy, el anillo segmentado muestra el día contado desde el último inicio registrado. El calendario diferencia las fechas registradas de las estimadas. En Registro agrego o corrijo síntomas y en Estadísticas consulto el resumen de mi historial.</p>`,
+        `<p><b>Guion · 40–50 s.</b> Al abrir Seluna por primera vez veo el acceso por correo. Con una cuenta nueva puedo configurar el ciclo en dos pasos o dejarlo para después. Primero indico la fecha del último inicio y las duraciones habituales. Después elijo mi objetivo y mis preferencias. Desde el perfil puedo editar los ajustes o escoger una foto con el selector de Android. La foto se guarda en este dispositivo.</p>`,
+        `<p><b>Guion · 40–50 s.</b> En Hoy, el anillo segmentado muestra el día contado desde el último inicio registrado. El calendario diferencia las fechas registradas de las estimadas. En Registro agrego o corrijo síntomas y en Estadísticas consulto el resumen de mi historial.</p>`,
         `<p><b>Guion · 45–50 s.</b> Para estimar la próxima fecha, calculo los días entre inicios consecutivos. Con dos intervalos ficticios de 28 y 30 días, el promedio es 29. Sumo esos días al último inicio. Con un solo inicio uso la duración habitual configurada. El ciclo puede variar, por eso la app conserva la distinción entre una fecha registrada y una estimada.</p><p class="source">Referencia · <a href="https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle">Office on Women’s Health · Your menstrual cycle</a></p>`,
-        `<p><b>Guion · 50–60 s.</b> Construí Seluna en Android Studio con Kotlin. SQLite conserva el historial de cada perfil. Cuando la usuaria solicita una copia, Firebase Authentication identifica su cuenta y Firestore guarda la información. En la prueba real guardé seis registros y tres inicios ficticios desde Android. Luego quité un registro de muestra del dispositivo y lo recuperé con Restaurar copia. También comprobé que Firestore rechaza la lectura anónima.</p><p class="source">Referencias · <a href="https://developer.android.com/training/data-storage/sqlite">Android · SQLite</a> · <a href="https://firebase.google.com/docs/firestore/security/rules-conditions">Firebase · Condiciones de reglas de seguridad</a>.</p>`,
+        `<p><b>Guion · 45–55 s.</b> Construí Seluna en Kotlin. Authentication identifica la cuenta y Android aísla los archivos de Seluna, donde SQLite guarda el diario por perfil. La copia a Firestore es manual. Firebase usa HTTPS en tránsito y cifra los datos almacenados. Seluna usa el cifrado de Firebase administrado por el proveedor.</p><p class="source"><a href="https://source.android.com/docs/security/app-sandbox">Android · Aislamiento de apps</a> · <a href="https://firebase.google.com/support/privacy/">Firebase · Privacidad y seguridad</a>.</p>`,
+        `<p><b>Guion · 45–55 s.</b> Authentication muestra dos cuentas ficticias. En Firestore, la consola indica que el documento padre no existe porque se escribió directamente en <code>users/{uid}/backups/current</code>. El documento <code>current</code> guarda la copia. Las reglas comparan el UID de la sesión con el UID de la ruta. Desde Android guardé seis registros y tres inicios de muestra, y recuperé un registro eliminado del dispositivo. También comprobé que Firestore rechaza una lectura anónima.</p>`,
         `<p><b>Guion · 45–55 s.</b> Si pregunto cómo se cuenta el día uno, la guía responde en el teléfono, incluso sin conexión. También puedo leer fichas de bienestar, como la de Infusiones, que lleva una foto propia. Para otras consultas, el servidor usa Qwen3.8 Flash en B.AI. Envía la pregunta y, cuando hace falta contexto, hasta dos mensajes anteriores del chat. La clave se configura en el servidor.</p><p class="source"><a href="https://docs.b.ai/llmservice/models/qwen3-8-flash/">B.AI · Qwen3.8 Flash</a></p>`,
         `<p><b>Guion · 45–55 s.</b> Partí de los mockups y trabajé por incrementos. Para comprobar los requisitos puedo abrir un día del calendario o una fila del diario, que son elementos interactivos de RecyclerView. En el formulario pruebo una fecha inválida, guardo una válida y vuelvo a abrir la app para comprobar la persistencia. En Estadísticas puedo generar el informe que ven aquí. La usuaria decide entre el resumen y la tabla diaria. Las notas personales permanecen fuera de ambos informes.</p><p class="source"><a href="https://developer.android.com/develop/ui/views/layout/recyclerview">Android · RecyclerView</a></p>`,
-        `<p><b>Guion · 45–60 s.</b> Entro con «Entrar con datos de muestra» para abrir un perfil con historia ficticia. Señalo el anillo de Hoy, guardo un síntoma y abro Estadísticas. Allí selecciono «Exportar informe de salud en PDF» y muestro las dos opciones. Para el chat, elijo la pregunta sobre el día uno y muestro la respuesta de la guía. Como propuesta futura, Seluna Plus ampliaría las consultas con IA y ofrecería resúmenes a petición. Antes de cobrar mediría el costo medio de cada consulta y cuántas usuarias usarían Plus.</p><p><b>Preguntas para preparar</b></p><ul><li>¿Qué queda en SQLite y cuándo sale una copia hacia Firebase?</li><li>¿Cómo se calcula la estimación con uno o varios inicios?</li><li>¿Qué cambia entre el resumen PDF y el informe con tabla diaria?</li><li>¿Dónde se usa RecyclerView y qué acción tiene cada elemento?</li><li>¿Cómo distingo en la demo una respuesta de la guía y una de Qwen?</li></ul>`,
+        `<p><b>Guion · 45–60 s.</b> En la compilación de desarrollo abro «Probar con datos de ejemplo» y selecciono un historial ficticio. Señalo el anillo de Hoy, guardo un síntoma y abro Estadísticas. Allí selecciono «Exportar informe de salud en PDF» y muestro las dos opciones. Para el chat, elijo la pregunta sobre el día uno y muestro la respuesta de la guía. Como propuesta futura, Seluna Plus ampliaría las consultas con IA y ofrecería resúmenes a petición. Antes de cobrar mediría el costo medio de cada consulta y cuántas usuarias usarían Plus.</p><p><b>Preguntas para preparar</b></p><ul><li>¿Qué queda en SQLite y cuándo sale una copia hacia Firebase?</li><li>¿Cómo se calcula la estimación con uno o varios inicios?</li><li>¿Qué cambia entre el resumen PDF y el informe con tabla diaria?</li><li>¿Dónde se usa RecyclerView y qué acción tiene cada elemento?</li><li>¿Cómo distingo en la demo una respuesta de la guía y una de Qwen?</li></ul>`,
       ];
       let index = 0;
       const slides = [...document.querySelectorAll(".slide")],
@@ -817,7 +923,8 @@
           s.setAttribute("aria-hidden", i !== index);
         });
         document.getElementById("count").textContent =
-          String(index + 1).padStart(2, "0") + " / 08";
+          String(index + 1).padStart(2, "0") + " / " +
+          String(slides.length).padStart(2, "0");
         document.getElementById("bar").style.width =
           ((index + 1) / slides.length) * 100 + "%";
         prev.disabled = index === 0;
