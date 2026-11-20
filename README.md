@@ -2,6 +2,7 @@
 
 Beta Android de Tecnologías Móviles, desarrollada por **Luisa Fernanda Velandia Salamanca**. Incluye seguimiento de ciclo, calendario, registro diario, estadísticas de síntomas, exportación de resumen PDF y un asistente educativo opcional.
 
+- [Entrega de clase y descargas](docs/entrega.md)
 - [Plan y criterios de aceptación](docs/plan.md)
 - [Diagrama de clases y datos](docs/modelo-datos.md)
 - [Pruebas funcionales y evidencia de la rúbrica](docs/pruebas-funcionales.md)
