@@ -4,6 +4,7 @@ Beta Android de Tecnologías Móviles, desarrollada por **Luisa Fernanda Velandi
 
 - [Plan y criterios de aceptación](docs/plan.md)
 - [Diagrama de clases y datos](docs/modelo-datos.md)
+- [Pruebas funcionales y evidencia de la rúbrica](docs/pruebas-funcionales.md)
 - [Presentación con guion](docs/presentacion.html) · Usa `←` y `→` para avanzar o retroceder. `N` abre el guion debajo de la diapositiva y `Esc` lo cierra.
 - [Mockups de Seluna en Figma](https://www.figma.com/design/NSu4CMDTwWvWka0ClNQGJ2/ProyectoMov?node-id=0-1&p=f)
 
@@ -25,6 +26,8 @@ Capturas del emulador Android con perfiles y registros ficticios. El chat muestr
 
 ## Ejecutar en Android Studio
 
+El instalador para clase se entrega como `entrega/Seluna-Entrega.apk`. Usa la variante `release` y está firmado con el certificado de pruebas Android para instalarlo o actualizar la beta de clase que use ese mismo certificado. Para distribuir en Google Play se usa la firma de publicación de Seluna. La carpeta `entrega` se conserva fuera de Git.
+
 Abre esta carpeta como proyecto, usa JDK 17 y Android SDK 35, selecciona la variante `debug` y ejecuta en un teléfono o emulador con Android 8.0 o superior. Desde PowerShell también puedes compilar y ejecutar el análisis estático.
 
 ```powershell
@@ -41,7 +44,7 @@ En la APK de depuración, **Probar con datos de ejemplo** abre uno de estos perf
 | Ciclos variables y síntomas | `demo-sintomas@seluna.example` | Intervalos irregulares y seis registros ficticios. |
 | Primer uso sin historial | `demo-inicio@seluna.example` | Onboarding y diario vacío. |
 
-La APK **release** usa las cuentas de Firebase de `seluna-app`. Puedes crear una desde **Crear una cuenta** o iniciar sesión con un correo y contraseña ya registrados en ese proyecto. El mismo acceso funciona en la beta y en la versión final con Firebase configurado. Los perfiles del seeder se incluyen en la compilación de depuración. Para distribuir un APK final, fírmalo con la clave de Seluna. [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Firma Android](https://developer.android.com/studio/publish/app-signing)
+La APK **release** usa las cuentas de Firebase de `seluna-app`. Puedes crear una desde **Crear una cuenta** o iniciar sesión con un correo y contraseña ya registrados en ese proyecto. El mismo acceso funciona en la beta y en la versión final con Firebase configurado. Los perfiles del seeder se incluyen en la compilación de depuración. [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Firma Android](https://developer.android.com/studio/publish/app-signing)
 
 ## Registro de Firebase
 
@@ -54,19 +57,29 @@ Para preparar la integración con Firebase, registra una app Android en el proye
 | Alias de la app | `Seluna` |
 | SHA‑1 | Puedes dejarlo en blanco para correo y contraseña. Añádelo si vas a habilitar Google como proveedor. |
 
-Habilita **Authentication → Correo electrónico/contraseña** y usa **Cloud Firestore en modo producción**. Descarga `google-services.json` desde la configuración de la app Android y colócalo en `app/google-services.json`. Gradle aplica el complemento Google Services cuando encuentra ese archivo. Las reglas del repositorio permiten escribir la copia únicamente a su UID autenticado. [Configuración de Android](https://firebase.google.com/docs/android/setup) · [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Reglas de Firestore](https://firebase.google.com/docs/firestore/security/rules-conditions)
+Habilita **Authentication → Correo electrónico/contraseña** y usa **Cloud Firestore en modo producción**. Descarga `google-services.json` desde la configuración de la app Android y colócalo en `app/google-services.json`. Gradle aplica el complemento Google Services cuando encuentra ese archivo. Las reglas del repositorio permiten leer y escribir el perfil y la copia al titular del UID. [Configuración de Android](https://firebase.google.com/docs/android/setup) · [Acceso con contraseña](https://firebase.google.com/docs/auth/android/password-auth) · [Reglas de Firestore](https://firebase.google.com/docs/firestore/security/rules-conditions)
 
-En Android, crea una cuenta por correo desde el acceso inicial. Aparecerá en **Authentication → Usuarios**. Configura el ciclo y el objetivo durante el onboarding. Puedes cambiar la foto en **Mi perfil y ciclo**. La foto y el diario se guardan en el almacenamiento privado de la app.
+En **Crear una cuenta**, escribe tu nombre, correo y contraseña. El nombre que ingresas se guarda en el perfil local y como nombre visible de Firebase Authentication. El correo sirve para iniciar sesión y recuperar el acceso. Firebase asigna el UID al crear la cuenta.
+
+| En la consola de `seluna-app` | Qué puedes verificar |
+| --- | --- |
+| **Authentication → Usuarios** | El correo y el UID de la cuenta. Firebase Authentication también administra el nombre visible. |
+| **Firestore Database → Datos → `users/{uid}`** | El perfil con el `displayName` que escribió la titular y la fecha `updatedAt`. Se crea aparte de la copia del diario. |
+| **Firestore Database → Datos → `users/{uid}/backups/current`** | El respaldo de ciclo, inicios y diario, cuando la titular lo guarda manualmente o activa la copia automática. |
+
+Las reglas de perfil ya están publicadas en `seluna-app`. Las cuentas existentes con nombre en Authentication pueden completar el documento al volver a abrir la app actual con conexión. Si todavía ves un documento padre vacío, comprueba el UID en Authentication y si la app ya pudo guardar el perfil. La foto se conserva en el almacenamiento privado del equipo. [Administrar usuarios y actualizar el nombre visible](https://firebase.google.com/docs/auth/android/manage-users)
+
+El APK de entrega creó una cuenta ficticia cuyo nombre aparece en Authentication y en el documento privado de Firestore. En esa prueba, la copia del diario aún estaba desactivada y Firestore rechazó una lectura anónima del perfil.
 
 En **Hoy → Copia en Firebase → Activar copia automática**, confirma el envío de configuración, inicios y diario, incluidas las notas. Seluna guarda cada cambio en SQLite y respalda los cambios mientras la app está abierta y tiene conexión. Si el envío falla, el diario queda disponible en el equipo y la app reintenta durante el uso o al volver a abrirla. La copia aparece en **Firestore Database → Datos → `users/{uid}/backups/current`**.
 
 En un dispositivo sin historial local, entra con la misma cuenta de Firebase. Seluna intenta recuperar su copia antes del onboarding. La activación de nuevas copias se elige por dispositivo. Si el móvil y Firebase tienen cambios distintos, la app conserva ambas versiones y pide revisar la copia. **Restaurar copia** añade datos ausentes. **Guardar copia en Firebase** reemplaza la copia tras confirmación. La foto sigue guardándose solo en el equipo.
 
-Las reglas están desplegadas en `seluna-app`. La prueba en Android guardó una copia con seis registros ficticios y tres inicios, recuperó un registro del diario y verificó que Firestore rechaza una lectura anónima.
+En la prueba previa de `seluna-app`, Android guardó una copia con seis registros ficticios y tres inicios, recuperó un registro del diario y verificó que Firestore rechaza una lectura anónima. Las capturas de consola se tomaron durante esa prueba.
 
 La prueba de respaldo automático guardó un registro ficticio en un emulador. Al entrar con la misma cuenta en un segundo emulador, el registro apareció en el diario sin pulsar **Restaurar copia**.
 
-[Consola de Authentication](docs/capturas/firebase-auth.png) · [Copia en Firestore](docs/capturas/firebase-firestore.png) · [Reglas activas](docs/capturas/firebase-reglas.png)
+[Authentication en la prueba anterior](docs/capturas/firebase-auth.png) · [Copia en Firestore](docs/capturas/firebase-firestore.png) · [Reglas de esa prueba](docs/capturas/firebase-reglas.png)
 
 Para administrar Firebase, abre una terminal nueva con `pwsh -NoProfile -NoExit -File .\scripts\Firebase-Seluna.ps1`. El acceso por código usa `entrega/firebase-luisa-cli`, separado de las sesiones habituales. Usa siempre `--project seluna-app` y la ruta al `firebase.json` del proyecto al desplegar reglas. Al terminar, ejecuta `pwsh -NoProfile -File .\scripts\Firebase-Seluna.ps1 -Cerrar` desde la raíz del proyecto para retirar la sesión temporal. [Referencia de Firebase CLI](https://firebase.google.com/docs/cli)
 
@@ -89,7 +102,7 @@ El servidor lee la clave exclusivamente de `server/.env`, excluido de Git, y usa
 
 ## Recorrido para exponer
 
-1. Abre el inicio de sesión. En **Probar con datos de ejemplo**, elige **Primer uso sin historial** para mostrar el onboarding con el objetivo separado del registro. Abre **Seguimiento de ciclo** para continuar la exposición con historial.
+1. En el APK de entrega, abre **Crear una cuenta** con un correo de prueba bajo tu control y muestra el onboarding. Puedes preparar la cuenta y un historial antes de exponer. En la compilación de depuración, **Probar con datos de ejemplo** permite mostrar el primer uso y un historial ficticio.
 2. Muestra el anillo de Hoy y la fecha estimada. Abre el calendario y selecciona un día.
 3. Guarda un registro con flujo, ánimo, síntomas e intensidad. En **Estadísticas → Exportar informe de salud en PDF**, selecciona el resumen o incluye la tabla diaria. El informe se genera en el dispositivo y excluye las notas personales.
 4. Abre el chat y selecciona «¿Cómo se cuenta el día 1 del ciclo?» para probar la guía local. Para mostrar el servidor, escribe una pregunta diferente, como «¿Cómo puedo preparar preguntas para mi próxima consulta sobre mi ciclo?».

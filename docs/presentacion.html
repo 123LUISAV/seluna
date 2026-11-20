@@ -476,6 +476,34 @@
       .deck:has(.notes.open) .evidence .shot:not(.evidence-data) img {
         max-height: 17dvh;
       }
+      .account-layout {
+        align-items: start;
+        gap: clamp(22px, 4vw, 54px);
+      }
+      .account-layout .steps {
+        gap: 8px;
+      }
+      .account-layout .step {
+        display: block;
+        padding: 12px 16px;
+      }
+      .account-layout code {
+        font-size: 0.9em;
+        overflow-wrap: anywhere;
+      }
+      .account-layout .evidence {
+        gap: 12px;
+      }
+      .account-layout .evidence .shot img {
+        max-height: 16dvh;
+      }
+      .account-layout .evidence .evidence-data img {
+        max-height: 28dvh;
+      }
+      .evidence-note {
+        margin: 0 0 10px;
+        text-align: center;
+      }
       .shot {
         margin: 0;
         min-width: 0;
@@ -701,15 +729,28 @@
           font-size: 16px;
         }
         .bottom {
-          gap: 8px;
-          flex-wrap: wrap;
+          gap: 6px;
+          padding-inline: 14px;
         }
         .progress {
-          min-width: 32px;
+          min-width: 0;
         }
-        .control,
-        .count {
-          font-size: 15px;
+        .bottom .control,
+        .bottom .count {
+          font-size: 14px;
+          white-space: nowrap;
+        }
+        .bottom .control {
+          padding-inline: 8px;
+        }
+      }
+      @media (max-width: 360px) {
+        .bottom {
+          justify-content: space-between;
+          padding-inline: 10px;
+        }
+        .bottom .progress {
+          display: none;
         }
       }
     </style>
@@ -780,11 +821,11 @@
           <h2>Acceso y personalización</h2>
           <div class="gallery">
             <figure class="shot">
-              <a href="capturas/acceso.png" target="_blank" rel="noopener noreferrer">
-                <img src="capturas/acceso.png" alt="Ampliar la pantalla de inicio de sesión de Seluna" />
+              <a href="capturas/registro-cuenta.png" target="_blank" rel="noopener noreferrer">
+                <img src="capturas/registro-cuenta.png" alt="Ampliar el formulario de creación de cuenta con los campos Tu nombre, Correo electrónico y Contraseña" />
               </a>
-              <figcaption>Inicio de sesión</figcaption>
-              <p>Correo y contraseña.</p>
+              <figcaption>Crear cuenta</figcaption>
+              <p>Nombre, correo y contraseña.</p>
             </figure>
             <figure class="shot">
               <a href="capturas/objetivo.png" target="_blank" rel="noopener noreferrer">
@@ -891,7 +932,7 @@
               <span>01</span>
               <div>
                 <b>Guardado local</b>
-                <p>El historial se guarda sin conexión. La foto queda en el teléfono. <a href="modelo-datos.md" target="_blank" rel="noopener noreferrer">Diagrama de clases</a></p>
+                <p>SQLite conserva el perfil y el historial sin conexión. La foto queda en el teléfono. <a href="modelo-datos.md" target="_blank" rel="noopener noreferrer">Diagrama de clases</a></p>
               </div>
             </div>
             <div class="step">
@@ -919,28 +960,46 @@
       </section>
       <section class="slide" aria-label="Diapositiva 7">
         <div>
-          <div class="eyebrow">Prueba en seluna-app</div>
-          <h2>Qué guarda Firebase</h2>
-          <div class="evidence">
-            <figure class="shot evidence-auth">
-              <a href="capturas/firebase-auth.png" target="_blank" rel="noopener noreferrer">
-                <img src="capturas/firebase-auth.png" alt="Abrir evidencia de dos cuentas ficticias en Firebase Authentication" />
-              </a>
-              <figcaption>Authentication · cuentas de prueba</figcaption>
-            </figure>
-            <figure class="shot evidence-data">
-              <a href="capturas/firebase-firestore.png" target="_blank" rel="noopener noreferrer">
-                <img src="capturas/firebase-firestore.png" alt="Abrir documento current de la subcolección backups con registros y configuración ficticios" />
-              </a>
-              <figcaption>Firestore · copia de un ciclo ficticio</figcaption>
-              <p>Evidencia de la prueba manual original.</p>
-            </figure>
-            <figure class="shot evidence-rules">
-              <a href="capturas/firebase-reglas.png" target="_blank" rel="noopener noreferrer">
-                <img src="capturas/firebase-reglas.png" alt="Abrir reglas que limitan lectura y escritura de la copia a su titular" />
-              </a>
-              <figcaption>Reglas · acceso por UID de la cuenta</figcaption>
-            </figure>
+          <div class="eyebrow">Datos de la cuenta</div>
+          <h2>Tu nombre lo escribes tú.</h2>
+          <div class="grid account-layout">
+            <div class="steps">
+              <div class="step">
+                <b>Firebase Authentication</b>
+                <p>Identifica la cuenta con su UID y correo y conserva el nombre visible.</p>
+              </div>
+              <div class="step">
+                <b>Perfil en Firestore</b>
+                <p>El documento <code>users/{uid}</code> guarda el nombre y la fecha de actualización. Las reglas del proyecto permiten el acceso a la titular.</p>
+              </div>
+              <div class="step">
+                <b>Respaldo opcional</b>
+                <p>El diario se copia en <code>users/{uid}/backups/current</code> al usar el respaldo.</p>
+              </div>
+            </div>
+            <div>
+              <p class="small evidence-note">Capturas de la prueba original de cuentas y respaldo.</p>
+              <div class="evidence">
+                <figure class="shot evidence-auth">
+                  <a href="capturas/firebase-auth.png" target="_blank" rel="noopener noreferrer">
+                    <img src="capturas/firebase-auth.png" alt="Abrir evidencia de dos cuentas ficticias en Firebase Authentication" />
+                  </a>
+                  <figcaption>Cuentas de prueba</figcaption>
+                </figure>
+                <figure class="shot evidence-data">
+                  <a href="capturas/firebase-firestore.png" target="_blank" rel="noopener noreferrer">
+                    <img src="capturas/firebase-firestore.png" alt="Abrir documento current de la subcolección backups con registros y configuración ficticios" />
+                  </a>
+                  <figcaption>Copia de un ciclo ficticio</figcaption>
+                </figure>
+                <figure class="shot evidence-rules">
+                  <a href="capturas/firebase-reglas.png" target="_blank" rel="noopener noreferrer">
+                    <img src="capturas/firebase-reglas.png" alt="Abrir reglas originales que limitan lectura y escritura de la copia a su titular" />
+                  </a>
+                  <figcaption>Reglas del respaldo</figcaption>
+                </figure>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -979,17 +1038,17 @@
       <section class="slide" aria-label="Diapositiva 9">
         <div class="grid">
           <div>
-            <div class="eyebrow">Método y criterios de entrega</div>
-            <h2>Qué comprobar en la beta.</h2>
+            <div class="eyebrow">Verificación de la entrega</div>
+            <h2>Cinco requisitos de la beta.</h2>
             <p>
-              Desarrollo incremental a partir del mockup y la rúbrica, con
-              datos ficticios para probar cada recorrido.
+              Desarrollo incremental desde los mockups, con Kotlin y Android Studio y pruebas con datos ficticios.
             </p>
             <ul class="checks">
-              <li><b>Formulario.</b> Rechazar fechas y valores inválidos.</li>
-              <li><b>Persistencia.</b> Reabrir la app y encontrar el registro guardado.</li>
-              <li><b>RecyclerView.</b> Abrir una fecha o un registro con un toque.</li>
-              <li><b>Informe.</b> Exportar el resumen o añadir la tabla diaria. Ambos excluyen las notas privadas.</li>
+              <li><b>Problemática.</b> Reunir el historial del ciclo y explicar su estimación.</li>
+              <li><b>Persistencia.</b> Recuperar registros en SQLite al reabrir.</li>
+              <li><b>Clases modelo.</b> Representar perfiles, ajustes del ciclo y registros en Kotlin.</li>
+              <li><b>Listados.</b> Abrir días y registros desde <code>RecyclerView</code>.</li>
+              <li><b>Formularios.</b> Validar fecha, flujo, ánimo e intensidad.</li>
             </ul>
           </div>
           <figure class="shot report-shot">
@@ -1021,10 +1080,10 @@
         <div class="grid">
           <div>
             <div class="eyebrow">Cierre · demostración</div>
-            <h2>Demostración con datos de muestra.</h2>
+            <h2>Cómo probar Seluna.</h2>
             <p class="lead">
-              Abrir Hoy, registrar un síntoma, revisar las estadísticas y
-              exportar el informe. En el chat, probar la guía sin conexión.
+              Crea una cuenta o entra con tu correo. Registra un síntoma,
+              revisa tus estadísticas y exporta el informe.
             </p>
             <p class="small" style="margin-top: 16px">
               Propuesta Seluna Plus. Seguimiento gratuito y una suscripción
@@ -1068,16 +1127,16 @@
     <script>
       const notes = [
         `<p><b>Guion · 35–40 s.</b> Soy Luisa Fernanda Velandia Salamanca y presento Seluna, una beta Android para acompañar el registro del ciclo menstrual. Quise reunir información cotidiana en un espacio sencillo, donde cada persona pueda consultar su propio historial a su ritmo.</p>`,
-        `<p><b>Guion · 40–45 s.</b> Identifiqué que cuando los inicios, síntomas y notas están repartidos en distintos lugares es difícil reconstruir un ciclo. Mi objetivo fue crear una aplicación que reúna esos datos. Lo hago con formularios, almacenamiento local y una estimación explicable, para ayudar a recordar fechas, observar patrones y preparar preguntas informadas.</p>`,
-        `<p><b>Guion · 40–50 s.</b> Al abrir Seluna por primera vez veo el acceso por correo. Con una cuenta nueva puedo configurar el ciclo en dos pasos o dejarlo para después. Primero indico la fecha del último inicio y las duraciones habituales. Después elijo mi objetivo y mis preferencias. Desde el perfil puedo editar los ajustes o escoger una foto con el selector de Android. La foto se guarda en este dispositivo.</p>`,
+        `<p><b>Guion · 40–45 s.</b> Cuando los inicios, síntomas y notas están en distintos lugares es difícil reconstruir un ciclo. Mi objetivo fue reunir esos datos para ayudar a recordar fechas, observar patrones y preparar preguntas informadas. El valor de Seluna está en poder rastrear cómo sale la próxima fecha estimada, conservar el diario sin conexión y consultar una guía local.</p>`,
+        `<p><b>Guion · 40–50 s.</b> En «Crear cuenta» escribo mi nombre, correo y contraseña. El nombre viene de ese formulario. Con una cuenta nueva puedo configurar el ciclo en dos pasos o dejarlo para después. Primero indico la fecha del último inicio y las duraciones habituales. Luego elijo mi objetivo y mis preferencias. Desde el perfil puedo editar esos ajustes o escoger una foto del dispositivo.</p>`,
         `<p><b>Guion · 40–50 s.</b> En Hoy, el anillo segmentado muestra el día contado desde el último inicio registrado. El calendario diferencia las fechas registradas de las estimadas. En Registro agrego o corrijo síntomas y en Estadísticas consulto el resumen de mi historial.</p>`,
         `<p><b>Guion · 45–50 s.</b> Para estimar la próxima fecha, calculo los días entre inicios consecutivos. Con dos intervalos ficticios de 28 y 30 días, el promedio es 29. Sumo esos días al último inicio. Con un solo inicio uso la duración habitual configurada. El ciclo puede variar, por eso la app conserva la distinción entre una fecha registrada y una estimada.</p><p class="source">Referencia · <a href="https://womenshealth.gov/menstrual-cycle/your-menstrual-cycle">Office on Women’s Health · Your menstrual cycle</a></p>`,
         `<p><b>Guion · 45–55 s.</b> SQLite guarda los cambios en el teléfono, incluso sin conexión. Si activo la copia automática en este dispositivo, los cambios también se respaldan en Firestore cuando hay conexión. En la prueba guardé un registro ficticio en un emulador y lo recuperé al entrar con la misma cuenta en otro. Si hay cambios incompatibles, el respaldo se pausa para preservar ambos historiales. Firestore comprueba el UID de la titular y Firebase cifra la copia en tránsito y en reposo. La foto queda en el teléfono.</p><p class="source"><a href="https://source.android.com/docs/security/app-sandbox">Android · Aislamiento de apps</a> · <a href="https://firebase.google.com/support/privacy/">Firebase · Privacidad y seguridad</a>.</p>`,
-        `<p><b>Guion · 45–55 s.</b> Estas capturas corresponden a la prueba de copia manual original. Authentication muestra dos cuentas ficticias. En Firestore, la consola indica que el documento padre no existe porque se escribió directamente en <code>users/{uid}/backups/current</code>. El documento <code>current</code> guarda la copia. Las reglas comparan el UID de la sesión con el UID de la ruta. Desde Android guardé seis registros y tres inicios de muestra, y recuperé un registro eliminado del dispositivo. También comprobé que Firestore rechaza una lectura anónima.</p>`,
+        `<p><b>Guion · 45–55 s.</b> Uso el correo para iniciar sesión y el nombre que escribí para identificarme en Seluna. Authentication conserva el UID, el correo y el nombre visible. En Firestore, <code>users/{uid}</code> guarda ese nombre como <code>displayName</code> y la fecha del servidor como <code>updatedAt</code>. Si activo el respaldo, el diario queda en <code>backups/current</code>. La consola de esta diapositiva muestra la prueba original, cuando la copia se guardó directamente en la subcolección y el documento padre aparecía vacío.</p>`,
         `<p><b>Guion · 45–55 s.</b> Si pregunto cómo se cuenta el día uno, la guía responde en el teléfono, incluso sin conexión. También puedo leer fichas de bienestar, como la de Infusiones, que lleva una foto propia. Para otras consultas, el servidor usa Qwen3.8 Flash en B.AI. Envía la pregunta y, cuando hace falta contexto, hasta dos mensajes anteriores del chat. La clave se configura en el servidor.</p><p class="source"><a href="https://docs.b.ai/llmservice/models/qwen3-8-flash/">B.AI · Qwen3.8 Flash</a></p>`,
-        `<p><b>Guion · 45–55 s.</b> Partí de los mockups y trabajé por incrementos. Para comprobar los requisitos puedo abrir un día del calendario o una fila del diario, que son elementos interactivos de RecyclerView. En el formulario pruebo una fecha inválida, guardo una válida y vuelvo a abrir la app para comprobar la persistencia. En Estadísticas puedo generar el informe que ven aquí. La usuaria decide entre el resumen y la tabla diaria. Las notas personales permanecen fuera de ambos informes.</p><p class="source"><a href="https://developer.android.com/develop/ui/views/layout/recyclerview">Android · RecyclerView</a></p>`,
+        `<p><b>Guion · 45–55 s.</b> La beta responde a los cinco criterios. Resuelve el problema de reconstruir el historial, lo conserva con SQLite y lo representa con modelos de Kotlin como <code>UserProfile</code>, <code>CycleSettings</code> y <code>DailyEntry</code>. En los listados puedo abrir un día del calendario o un registro con un toque. En el formulario de Registro verifico los campos antes de guardar. En Estadísticas elijo entre exportar un resumen y añadir la tabla diaria. Ambos PDF excluyen las notas privadas.</p><p class="source"><a href="https://developer.android.com/develop/ui/views/layout/recyclerview">Android · RecyclerView</a></p>`,
         `<p><b>Guion · 35–45 s.</b> Para una versión futura propongo consultar desde la web con la misma cuenta, por ejemplo al cambiar de equipo. También propongo una invitación revocable para la pareja. La titular elegiría qué compartir, como el resumen de fechas, y podría retirar el permiso desde su perfil. Ambas funciones quedan en la hoja de ruta.</p>`,
-        `<p><b>Guion · 45–60 s.</b> En la compilación de desarrollo abro «Probar con datos de ejemplo» y selecciono un historial ficticio. Señalo el anillo de Hoy, guardo un síntoma y abro Estadísticas. Allí selecciono «Exportar informe de salud en PDF» y muestro las dos opciones. Para el chat, elijo la pregunta sobre el día uno y muestro la respuesta de la guía. Como propuesta futura, Seluna Plus ampliaría las consultas con IA y ofrecería resúmenes a petición. Antes de cobrar mediría el costo medio de cada consulta y cuántas usuarias usarían Plus.</p><p><b>Preguntas para preparar</b></p><ul><li>¿Qué queda en SQLite y cuándo se respalda en Firebase?</li><li>¿Cómo se calcula la estimación con uno o varios inicios?</li><li>¿Qué cambia entre el resumen PDF y el informe con tabla diaria?</li><li>¿Dónde se usa RecyclerView y qué acción tiene cada elemento?</li><li>¿Cómo distingo en la demo una respuesta de la guía y una de Qwen?</li></ul>`,
+        `<p><b>Guion · 45–60 s.</b> En el APK de entrega entro con un correo y su contraseña o creo una cuenta desde Seluna. En la compilación de desarrollo puedo abrir «Probar con datos de ejemplo». Señalo el anillo de Hoy, guardo un síntoma y abro Estadísticas. Allí selecciono «Exportar informe de salud en PDF» y muestro las dos opciones. Para terminar, elijo la pregunta sobre el día uno en el chat y muestro la respuesta de la guía sin conexión.</p><p><b>Preguntas para preparar</b></p><ul><li>¿De dónde sale el nombre de la cuenta y qué datos quedan en SQLite?</li><li>¿Cómo se calcula la estimación con uno o varios inicios?</li><li>¿Qué cambia entre el resumen PDF y el informe con tabla diaria?</li><li>¿Dónde se usa RecyclerView y qué acción tiene cada elemento?</li><li>¿Cómo distingo en la demo una respuesta de la guía y una de Qwen?</li></ul>`,
       ];
       let index = 0;
       const slides = [...document.querySelectorAll(".slide")],
