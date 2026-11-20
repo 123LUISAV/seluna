@@ -159,12 +159,17 @@ class MainActivity : Activity() {
         photoUserId = savedInstanceState?.takeIf { it.containsKey("photo_user_id") }
             ?.getLong("photo_user_id")
         cloud.resumeAccount()
+        if (!BuildConfig.DEBUG && store.currentUser()?.email?.let(DemoSeeder::scenarioFor) != null) {
+            cloud.signOut()
+            store.logout()
+        }
         if (store.currentUser() == null) auth(false) else enterAccount()
     }
 
     override fun onResume() {
         super.onResume()
         foreground = true
+        cloud.publishAccountProfile()
         queueAutomaticBackup()
     }
 
@@ -307,10 +312,9 @@ class MainActivity : Activity() {
             val e = email.text.toString().trim()
             val p = pass.text.toString()
             val n = name.text.toString().trim()
-            val demo = if (BuildConfig.DEBUG) DemoSeeder.scenarios.firstOrNull {
-                it.email.equals(e, ignoreCase = true)
-            } else null
+            val demo = DemoSeeder.scenarioFor(e)
             when {
+                demo != null && !BuildConfig.DEBUG -> email.error = "Usa tu cuenta de Firebase"
                 demo != null && register -> email.error = "Usa otro correo para crear tu cuenta"
                 demo != null -> {
                     if (p == DemoSeeder.PASSWORD && DemoSeeder.signIn(store, demo)) enterAccount()
@@ -372,6 +376,7 @@ class MainActivity : Activity() {
         }
         syncStatus = null
         syncFailures = 0
+        cloud.publishAccountProfile()
         if (!cloud.needsInitialRestore()) {
             showAccount()
             return
@@ -729,6 +734,7 @@ class MainActivity : Activity() {
                     dialog.dismiss()
                     startCloudOperation()
                     cloud.authenticate(address, secret, create) { result ->
+                        if (result.isSuccess) cloud.publishAccountProfile()
                         finishCloudOperation(result) { "Cuenta de Firebase conectada" }
                     }
                 }

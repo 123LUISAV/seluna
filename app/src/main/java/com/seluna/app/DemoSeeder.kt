@@ -14,6 +14,10 @@ object DemoSeeder {
 
     val scenarios: List<Scenario> = Scenario.entries
 
+    fun scenarioFor(email: String): Scenario? = scenarios.firstOrNull {
+        it.email.equals(email.trim(), ignoreCase = true)
+    }
+
     fun signIn(store: SelunaStore, scenario: Scenario = Scenario.REGULAR): Boolean {
         if (!BuildConfig.DEBUG || store.currentUser() != null) return false
         var success = false

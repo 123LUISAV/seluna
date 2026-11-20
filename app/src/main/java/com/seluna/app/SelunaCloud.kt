@@ -46,6 +46,7 @@ class SelunaCloud(context: Context, private val store: SelunaStore) {
     private val syncState = context.applicationContext.getSharedPreferences(
         "seluna_cloud_sync", Context.MODE_PRIVATE,
     )
+    private var profilePublishingUid: String? = null
     val available: Boolean
         get() = auth != null && firestore != null
 
@@ -55,6 +56,44 @@ class SelunaCloud(context: Context, private val store: SelunaStore) {
             val user = auth?.currentUser ?: return null
             return if (store.cloudLinked(local.id, user.uid)) user.email else null
         }
+
+    fun publishAccountProfile(registeredName: String? = null) {
+        val local = store.currentUser() ?: return
+        val user = auth?.currentUser ?: return
+        val uid = user.uid
+        if (!store.cloudLinked(local.id, uid) || profilePublishingUid == uid) return
+        val name = registeredName?.trim()?.takeIf { it.isNotEmpty() }
+            ?: user.displayName?.trim()?.takeIf { it.isNotEmpty() }
+            ?: local.name.takeIf { store.requiresFirebaseSession(local.id) && it != "Cuenta Seluna" }
+            ?: return
+        if (name.length !in 1..80) return
+        val database = firestore ?: return
+        val version = store.sessionVersion
+        fun sameProfile() = store.sessionVersion == version &&
+            store.currentUser()?.id == local.id && auth.currentUser?.uid == uid
+        fun finish() {
+            if (profilePublishingUid == uid) profilePublishingUid = null
+        }
+        fun save() {
+            if (!sameProfile()) return finish()
+            val profile = database.collection("users").document(uid)
+            database.runTransaction { transaction ->
+                if (transaction.get(profile).getString("displayName") != name) {
+                    transaction.set(profile, mapOf(
+                        "displayName" to name,
+                        "updatedAt" to FieldValue.serverTimestamp(),
+                    ))
+                }
+                Unit
+            }.addOnCompleteListener { finish() }
+        }
+        profilePublishingUid = uid
+        if (user.displayName == name) save()
+        else user.updateProfile(UserProfileChangeRequest.Builder().setDisplayName(name).build())
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) save() else finish()
+            }
+    }
 
     enum class SyncResult { CURRENT, UPLOADED, RESTORED, CONFLICT, LOCAL_CHANGED }
 
@@ -283,8 +322,7 @@ class SelunaCloud(context: Context, private val store: SelunaStore) {
                             throw (result.exception ?: IllegalStateException("No se pudo iniciar sesión"))
                         check(user != null && user.uid == service.currentUser?.uid) { "Cuenta no disponible" }
                         store.openFirebaseAccount(user.uid, user.email ?: cleanEmail, name ?: user.displayName)
-                        if (name != null)
-                            user.updateProfile(UserProfileChangeRequest.Builder().setDisplayName(name.trim()).build())
+                        if (name != null) publishAccountProfile(name)
                         Unit
                     }
                     if (opened.isFailure && user != null && service.currentUser?.uid == user.uid)

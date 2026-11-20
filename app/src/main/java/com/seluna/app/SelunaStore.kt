@@ -143,6 +143,7 @@ class SelunaStore(context: Context) :
     }
 
     fun login(email: String, password: String): Boolean {
+        if (!BuildConfig.DEBUG && DemoSeeder.scenarioFor(email) != null) return false
         readableDatabase
             .rawQuery(
                 "SELECT id, salt, password_hash FROM users WHERE email = ? AND firebase_email IS NULL",
